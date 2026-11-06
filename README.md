@@ -1,36 +1,72 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Hearth
 
-## Getting Started
+Hearth is a personal life organizer for evenings. Household chores default to the hours after 6 PM, recurring tasks keep their own rhythm, and completing something is meant to feel satisfying without turning the day into a scoreboard.
 
-First, run the development server:
+## Run it
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). The first screen is onboarding. Answers are saved in IndexedDB, so a refresh keeps them.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run verify
+npm run build
+npm start
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+`verify` checks recurrence, evening scheduling, missed versus skipped versus postponed tasks, streaks, and XP.
 
-## Learn More
+## Technologies
 
-To learn more about Next.js, take a look at the following resources:
+- Next.js, React, and TypeScript
+- Tailwind CSS
+- Motion (Framer Motion) for completion, progress, and celebration animation
+- Lucide icons
+- IndexedDB for local persistence
+- Optional Supabase authentication and Postgres sync
+- A web app manifest and service worker for installation
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Environment variables
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Copy `.env.example` to `.env.local` only if you want cloud sync.
 
-## Deploy on Vercel
+```bash
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Without those values the app stays in local mode. Nothing is blocked.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Database setup
+
+1. Create a Supabase project.
+2. Open the SQL editor and run `supabase/schema.sql`.
+3. In Authentication, enable email and password.
+4. Put the project URL and anon key in `.env.local`.
+5. Restart the dev server, then create an account from Profile.
+
+The schema uses row level security so each account can only read and write its own rows. Tasks, recurrence rules, subtasks, completion history, pets, pet-care schedules, projects, XP, achievements, and notifications each have a table. Habits are tasks in the habit area, exposed through the `habits` and `habit_completions` views.
+
+Local data and cloud data merge by newest `updatedAt` when you sign in. Export a JSON backup from Profile before you rely on sync.
+
+## Scheduling
+
+- Household, habit, pet, health, and personal tasks are placed inside your available hours. The default is 18:00–23:00.
+- Work tasks use daytime hours unless onboarding says evenings.
+- A time you set yourself is kept, even if it is outside the default window.
+- A missed task is not a failed day. You can complete it, move it, or use a weekly streak recovery to skip it.
+- Moving a task keeps the same cycle, so the next recurrence is not duplicated.
+- Weekly tasks only exist on their scheduled day, so a Tuesday does not break a laundry streak.
+
+## Notifications
+
+Reminders are requested from Profile after an explanation, never on first launch. Quiet hours default to 23:00–18:00, so household tasks do not notify in the morning. Browser notifications work when permission is granted and the app is open. Installed PWAs still depend on the operating system, and background web push needs a server this project does not include.
+
+## Limitations
+
+- Background push notifications are not sent while the app is closed.
+- Supabase sync is last-write-wins per record. Two devices edited offline can overwrite fields that changed in both places; completions are kept by id.
+- There is no multi-user household sharing.
