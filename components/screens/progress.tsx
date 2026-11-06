@@ -1,11 +1,11 @@
 "use client";
 
-import { formatMedium, monthStart, startOfWeek } from "@/lib/dates";
+import { formatWeekday, monthStart, startOfWeek } from "@/lib/dates";
 import { dayStreak } from "@/lib/model";
 import { buildInsights, categoryBreakdown, monthSeries, postponedTasks, rangePercent, routineSuggestions, totalXp, weekSeries } from "@/lib/progress";
 import { LEVELS } from "@/lib/templates";
 import { useApp } from "@/lib/store";
-import { Button } from "../ui";
+import { Button, PageHeader } from "../ui";
 
 export function ProgressScreen() {
   const { data, clock, level, preferTime } = useApp();
@@ -24,16 +24,14 @@ export function ProgressScreen() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="serif text-4xl">Progress</h1>
-      </header>
+      <PageHeader title="Progress" />
       <section className="grid grid-cols-3 gap-2">
         <Tile label="Today" value={`${daily.percent}%`} />
         <Tile label="This week" value={`${weekly.percent}%`} />
         <Tile label="This month" value={`${monthly.percent}%`} />
       </section>
       <section className="card p-5">
-        <div className="flex items-end justify-between">
+        <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
             <p className="text-xs uppercase tracking-[0.16em] text-muted">Level {level.level}</p>
             <h2 className="serif text-3xl">{level.title}</h2>
@@ -56,15 +54,15 @@ export function ProgressScreen() {
         <Tile label="Tasks completed" value={String(data.occurrences.filter((item) => item.status === "completed").length)} />
         <Tile label="Longest rhythm" value={`${rhythm.longest} days`} />
       </section>
-      <Chart title="This week" bars={week.map((day) => ({ label: formatMedium(day.date).split(",")[0] || day.date.slice(8), value: day.done, max: maxWeek }))} />
+      <Chart title="This week" bars={week.map((day) => ({ label: formatWeekday(day.date, "narrow"), value: day.done, max: maxWeek }))} />
       <Chart title="Recent weeks" bars={month.map((item) => ({ label: item.start.slice(5), value: item.percent, max: 100 }))} />
       <section className="space-y-2">
         {insights.map((insight) => <p key={insight.id} className="card px-4 py-3 text-sm leading-6">{insight.text}</p>)}
       </section>
       {routines.map((routine) => (
-        <div key={routine.taskId} className="card flex items-center justify-between gap-3 p-4">
+        <div key={routine.taskId} className="card flex flex-col items-stretch gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm">You often finish {routine.title} around {routine.time}.</p>
-          <Button variant="quiet" onClick={() => preferTime(routine.taskId, routine.time)}>Use it</Button>
+          <Button variant="quiet" className="shrink-0" onClick={() => preferTime(routine.taskId, routine.time)}>Use it</Button>
         </div>
       ))}
       {categories.length ? (
@@ -90,7 +88,7 @@ export function ProgressScreen() {
 }
 
 function Tile({ label, value }: { label: string; value: string }) {
-  return <div className="card px-3 py-4"><div className="serif text-3xl">{value}</div><div className="text-xs text-muted">{label}</div></div>;
+  return <div className="card min-w-0 px-3 py-4"><div className="serif text-2xl leading-none sm:text-3xl">{value}</div><div className="mt-1 text-xs text-muted">{label}</div></div>;
 }
 
 function Chart({ title, bars }: { title: string; bars: Array<{ label: string; value: number; max: number }> }) {
@@ -98,12 +96,12 @@ function Chart({ title, bars }: { title: string; bars: Array<{ label: string; va
     <section>
       <h2 className="mb-3 text-sm text-muted">{title}</h2>
       <div className="flex h-32 items-end gap-2">
-        {bars.map((bar) => (
-          <div key={bar.label} className="flex flex-1 flex-col items-center gap-2">
+        {bars.map((bar, index) => (
+          <div key={`${bar.label}-${index}`} className="flex min-w-0 flex-1 flex-col items-center gap-2">
             <div className="flex h-24 w-full items-end rounded-full bg-elev">
               <div className="w-full rounded-full bg-accent" style={{ height: `${Math.max(6, (bar.value / bar.max) * 100)}%` }} />
             </div>
-            <span className="text-[10px] text-muted">{bar.label}</span>
+            <span className="w-full truncate text-center text-[10px] text-muted">{bar.label}</span>
           </div>
         ))}
       </div>

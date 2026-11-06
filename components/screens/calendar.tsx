@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { addDays, eachDate, formatLong, formatMedium, formatTime, monthStart, startOfWeek, weekday } from "@/lib/dates";
+import { addDays, eachDate, formatLong, formatMedium, formatTime, formatWeekday, monthStart, startOfWeek, weekday } from "@/lib/dates";
 import { useApp } from "@/lib/store";
 import type { Occurrence } from "@/lib/types";
 import { TaskDetail } from "../tasks";
@@ -36,9 +36,9 @@ export function CalendarScreen() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="serif text-4xl">Calendar</h1>
-        <div className="flex gap-2">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="serif text-3xl leading-none sm:text-4xl">Calendar</h1>
+        <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] gap-2 sm:flex sm:items-center">
           <button type="button" className="grid h-11 w-11 place-items-center rounded-full bg-elev" onClick={() => shift(-1)} aria-label="Previous">‹</button>
           <button type="button" className="min-h-11 rounded-full bg-elev px-3 text-sm" onClick={() => { moved.current = true; setCursor(clock.today); }}>Today</button>
           <button type="button" className="grid h-11 w-11 place-items-center rounded-full bg-elev" onClick={() => shift(1)} aria-label="Next">›</button>
@@ -46,22 +46,43 @@ export function CalendarScreen() {
       </div>
       <Segmented value={mode} options={[{ id: "day", label: "Day" }, { id: "week", label: "Week" }, { id: "month", label: "Month" }]} onChange={setMode} />
       {mode === "month" ? (
-        <div className="grid grid-cols-7 gap-1">
-          {days.map((day) => {
-            const items = byDate.get(day) ?? [];
-            const inMonth = day.slice(0, 7) === cursor.slice(0, 7);
-            return (
-              <button key={day} type="button" onClick={() => { setCursor(day); setMode("day"); }} className={`min-h-16 rounded-2xl p-1 text-left ${day === clock.today ? "bg-accent-soft" : "bg-elev"} ${inMonth ? "" : "opacity-40"}`}>
-                <span className="text-xs">{Number(day.slice(8))}</span>
-                <span className="mt-1 flex gap-1">{items.slice(0, 3).map((item) => <i key={item.id} className={`h-1.5 w-1.5 rounded-full ${dot(item)}`} />)}</span>
-              </button>
-            );
-          })}
+        <div className="space-y-1">
+          <div className="grid grid-cols-7 gap-1 text-center text-[10px] uppercase tracking-wide text-muted">
+            {days.slice(0, 7).map((day) => <span key={`label-${day}`}>{formatWeekday(day, "narrow")}</span>)}
+          </div>
+          <div className="grid grid-cols-7 gap-1">
+            {days.map((day) => {
+              const items = byDate.get(day) ?? [];
+              const inMonth = day.slice(0, 7) === cursor.slice(0, 7);
+              return (
+                <button key={day} type="button" onClick={() => { moved.current = true; setCursor(day); setMode("day"); }} className={`flex min-h-14 flex-col items-center rounded-2xl px-0.5 py-1 sm:min-h-16 ${day === clock.today ? "bg-accent-soft" : "bg-elev"} ${inMonth ? "" : "opacity-40"}`}>
+                  <span className="text-xs">{Number(day.slice(8))}</span>
+                  <span className="mt-1 flex h-1.5 justify-center gap-0.5">{items.slice(0, 3).map((item) => <i key={item.id} className={`h-1.5 w-1.5 rounded-full ${dot(item)}`} />)}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       ) : (
+        <>
+        {mode === "week" ? (
+          <div className="grid grid-cols-7 gap-1 md:hidden">
+            {days.map((day) => {
+              const count = (byDate.get(day) ?? []).filter((item) => item.status !== "skipped").length;
+              const active = day === cursor;
+              return (
+                <button key={day} type="button" onClick={() => { moved.current = true; setCursor(day); }} className={`flex min-h-16 flex-col items-center justify-center rounded-2xl px-0.5 text-[10px] ${active ? "bg-ink text-bg" : day === clock.today ? "bg-accent-soft text-ink" : "bg-elev text-muted"}`}>
+                  <span>{formatWeekday(day, "narrow")}</span>
+                  <span className="serif text-base leading-none">{Number(day.slice(8))}</span>
+                  <span className={`mt-1 h-1.5 w-1.5 rounded-full ${count ? (active ? "bg-bg" : "bg-accent") : "bg-transparent"}`} />
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
         <div className={mode === "week" ? "flex flex-col gap-4 md:flex-row md:gap-2 md:overflow-x-auto md:pb-2" : "space-y-2"}>
           {days.map((day) => (
-            <section key={day} className={mode === "week" ? "md:w-56 md:shrink-0" : ""} onDragOver={(event) => event.preventDefault()} onDrop={(event) => {
+            <section key={day} className={mode === "week" ? `${day === cursor ? "" : "hidden"} md:block md:w-56 md:shrink-0` : ""} onDragOver={(event) => event.preventDefault()} onDrop={(event) => {
               const id = event.dataTransfer.getData("text/plain");
               const item = data.occurrences.find((occurrence) => occurrence.id === id);
               if (item) move(id, day, item.time);
@@ -69,8 +90,8 @@ export function CalendarScreen() {
               <h2 className="mb-2 text-sm text-muted">{mode === "day" ? formatLong(day) : formatMedium(day)}</h2>
               <div className="space-y-2">
                 {(byDate.get(day) ?? []).sort((a, b) => a.time.localeCompare(b.time)).map((item) => (
-                  <button key={item.id} type="button" draggable onDragStart={(event) => event.dataTransfer.setData("text/plain", item.id)} onClick={() => setSelected(item.id)} className="card block w-full px-3 py-2 text-left">
-                    <span className={`block text-sm ${item.status === "completed" ? "text-muted line-through" : ""}`}>{item.titleSnapshot}</span>
+                  <button key={item.id} type="button" draggable onDragStart={(event) => event.dataTransfer.setData("text/plain", item.id)} onClick={() => setSelected(item.id)} className="card block w-full px-3 py-3 text-left">
+                    <span className={`block break-words text-sm ${item.status === "completed" ? "text-muted line-through" : ""}`}>{item.titleSnapshot}</span>
                     <span className="mt-1 flex items-center gap-2 text-xs text-muted">
                       <i className={`h-2 w-2 rounded-full ${dot(item)}`} />
                       {formatTime(item.time)}{item.rescheduledFrom ? " · moved" : ""}{item.status === "missed" ? " · missed" : ""}
@@ -87,6 +108,7 @@ export function CalendarScreen() {
             </section>
           ))}
         </div>
+        </>
       )}
       <TaskDetail key={selected ?? "none"} occurrenceId={selected} onClose={() => setSelected(null)} />
     </div>

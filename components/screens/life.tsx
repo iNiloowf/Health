@@ -6,7 +6,7 @@ import { useApp } from "@/lib/store";
 import { ACHIEVEMENTS, CHORE_TEMPLATES, PET_CARES, PET_TYPES, PROJECT_COLORS } from "@/lib/templates";
 import { paceToInput } from "./pace";
 import { AddTaskButton, TaskDetail, TaskRow } from "../tasks";
-import { Button, controlClass, Empty, Field, Sheet } from "../ui";
+import { Button, controlClass, Empty, Field, PageHeader, Sheet } from "../ui";
 
 export function HouseholdScreen() {
   const { data, clock, saveTask } = useApp();
@@ -15,12 +15,7 @@ export function HouseholdScreen() {
   const rooms = data.categories.filter((category) => category.area === "household");
   return (
     <div className="space-y-6">
-      <header className="flex items-end justify-between">
-        <div>
-          <h1 className="serif text-4xl">Household</h1>
-        </div>
-        <AddTaskButton lock={{ area: "household", window: "evening" }} />
-      </header>
+      <PageHeader title="Household" action={<AddTaskButton lock={{ area: "household", window: "evening" }} />} />
       {rooms.map((room) => {
         const tasks = data.tasks.filter((task) => task.categoryId === room.id && task.active);
         const items = data.occurrences.filter((item) => item.categoryId === room.id && item.date === clock.today && item.status !== "skipped");
@@ -44,9 +39,9 @@ export function HouseholdScreen() {
           ))}
         </div>
       </section>
-      <form className="flex gap-2" onSubmit={(event) => { event.preventDefault(); if (!name.trim()) return; saveTask({ title: name, description: "", categoryId: "maintenance", icon: "Wrench", priority: "medium", durationMinutes: 30, xpReward: 20, recurrence: { type: "monthly", dayOfMonth: 1 }, anchorDate: clock.today, preferredTime: null, flexible: true, window: "evening", reminderMinutes: 15, notes: "", subtasks: [], area: "household" }); setName(""); }}>
+      <form className="flex flex-col gap-2 sm:flex-row" onSubmit={(event) => { event.preventDefault(); if (!name.trim()) return; saveTask({ title: name, description: "", categoryId: "maintenance", icon: "Wrench", priority: "medium", durationMinutes: 30, xpReward: 20, recurrence: { type: "monthly", dayOfMonth: 1 }, anchorDate: clock.today, preferredTime: null, flexible: true, window: "evening", reminderMinutes: 15, notes: "", subtasks: [], area: "household" }); setName(""); }}>
         <input className={controlClass} placeholder="Custom household task" value={name} onChange={(event) => setName(event.target.value)} />
-        <Button type="submit">Add</Button>
+        <Button type="submit" className="sm:shrink-0">Add</Button>
       </form>
       <TaskDetail key={selected ?? "none"} occurrenceId={selected} onClose={() => setSelected(null)} />
     </div>
@@ -59,16 +54,13 @@ export function HabitsScreen() {
   const habits = data.tasks.filter((task) => task.area === "habit" && task.active);
   return (
     <div className="space-y-4">
-      <div className="flex items-end justify-between">
-        <h1 className="serif text-4xl">Habits</h1>
-        <AddTaskButton label="Add habit" lock={{ area: "habit", categoryId: "habit", window: "evening", icon: "Repeat" }} />
-      </div>
+      <PageHeader title="Habits" action={<AddTaskButton label="Add habit" lock={{ area: "habit", categoryId: "habit", window: "evening", icon: "Repeat" }} />} />
       {habits.map((habit) => {
         const today = data.occurrences.find((item) => item.taskId === habit.id && item.date === clock.today);
         return (
           <article key={habit.id} className="card p-4">
-            <div className="flex items-center justify-between">
-              <h2>{habit.title}</h2>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="min-w-0">{habit.title}</h2>
               <span className="text-sm text-warm">{habit.streak} streak{habit.atRisk ? " · at risk" : ""}</span>
             </div>
             <p className="text-xs text-muted">Longest {habit.longestStreak}</p>
@@ -90,10 +82,7 @@ export function PetsScreen() {
   const [draft, setDraft] = useState({ name: "", type: "Dog", notes: "", photo: "", cares: ["feed", "water"] as string[] });
   return (
     <div className="space-y-4">
-      <div className="flex items-end justify-between">
-        <h1 className="serif text-4xl">Pets</h1>
-        <Button onClick={() => setOpen(true)}>Add pet</Button>
-      </div>
+      <PageHeader title="Pets" action={<Button onClick={() => setOpen(true)}>Add pet</Button>} />
       {data.pets.map((pet) => {
         const care = data.occurrences.filter((item) => item.petId === pet.id && item.date === clock.today && item.status !== "skipped");
         return (
@@ -104,8 +93,8 @@ export function PetsScreen() {
               // eslint-disable-next-line @next/next/no-img-element
               <img src={pet.photo} alt="" className="h-16 w-16 rounded-2xl object-cover" />
             ) : <div className="grid h-16 w-16 place-items-center rounded-2xl bg-warm-soft">{pet.name.slice(0, 1)}</div>}
-              <div>
-                <h2 className="text-xl">{pet.name}</h2>
+              <div className="min-w-0">
+                <h2 className="truncate text-xl">{pet.name}</h2>
                 <p className="text-sm text-muted">{pet.type}</p>
               </div>
             </div>
@@ -143,12 +132,7 @@ export function WorkScreen() {
   const [draft, setDraft] = useState({ name: "", description: "", kind: "work" as "work" | "personal", deadline: "", color: PROJECT_COLORS[0], incomeNotes: "", expenseNotes: "" });
   return (
     <div className="space-y-4">
-      <div className="flex items-end justify-between">
-        <div>
-          <h1 className="serif text-4xl">Work</h1>
-        </div>
-        <Button onClick={() => setOpen(true)}>Add project</Button>
-      </div>
+      <PageHeader title="Work" action={<Button onClick={() => setOpen(true)}>Add project</Button>} />
       {data.projects.filter((project) => !project.archived).map((project) => {
         const tasks = data.tasks.filter((task) => task.projectId === project.id);
         const done = tasks.filter((task) => data.occurrences.some((item) => item.taskId === task.id && item.status === "completed")).length;
@@ -156,8 +140,8 @@ export function WorkScreen() {
         return (
           <article key={project.id} className="card p-4">
             <div className="flex items-start justify-between gap-3">
-              <div>
-                <h2 className="text-xl">{project.name}</h2>
+              <div className="min-w-0">
+                <h2 className="truncate text-xl">{project.name}</h2>
                 <p className="text-sm text-muted">{project.kind}{project.deadline ? ` · due ${project.deadline}` : ""}</p>
               </div>
               <span className="text-sm">{percent}%</span>
@@ -171,7 +155,7 @@ export function WorkScreen() {
               <textarea className={`${controlClass} min-h-16 py-2`} placeholder="Income notes" defaultValue={project.incomeNotes} onBlur={(event) => saveProject({ ...project, incomeNotes: event.target.value }, project.id)} />
               <textarea className={`${controlClass} min-h-16 py-2`} placeholder="Expense notes" defaultValue={project.expenseNotes} onBlur={(event) => saveProject({ ...project, expenseNotes: event.target.value }, project.id)} />
             </div>
-            <div className="mt-3 flex gap-2">
+            <div className="mt-3 flex flex-wrap gap-2">
               <Button variant="quiet" onClick={() => saveTask({ title: "Project task", description: "", categoryId: "work", icon: "Briefcase", priority: "medium", durationMinutes: 30, xpReward: 20, recurrence: { type: "once" }, anchorDate: clock.today, preferredTime: null, flexible: true, window: "day", reminderMinutes: 10, notes: "", subtasks: [], area: "work", projectId: project.id })}>Add task</Button>
               <Button variant="danger" onClick={() => removeProject(project.id)}>Delete</Button>
             </div>
@@ -199,15 +183,15 @@ export function AchievementsScreen() {
   const owned = new Set(data.achievements.map((item) => item.id));
   return (
     <div className="space-y-4">
-      <h1 className="serif text-4xl">Achievements</h1>
-      <div className="grid grid-cols-2 gap-3">
+      <PageHeader title="Achievements" />
+      <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2">
         {ACHIEVEMENTS.map((item) => {
           const unlocked = owned.has(item.id);
           return (
             <article key={item.id} className={`card p-4 ${unlocked ? "" : "opacity-60"}`}>
               <p className="text-xs uppercase tracking-[0.14em] text-muted">{unlocked ? "Unlocked" : "Locked"}</p>
-              <h2 className="serif mt-2 text-2xl">{item.name}</h2>
-              <p className="mt-1 text-sm text-muted">{item.description}</p>
+              <h2 className="serif mt-2 text-xl leading-tight sm:text-2xl">{item.name}</h2>
+              <p className="mt-1 text-sm leading-6 text-muted">{item.description}</p>
             </article>
           );
         })}

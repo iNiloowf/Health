@@ -5,7 +5,7 @@ import { pullHome } from "@/lib/share-client";
 import type { SharedHome } from "@/lib/share";
 import { useApp } from "@/lib/store";
 import { TaskDetail, TaskRow } from "../tasks";
-import { Button } from "../ui";
+import { Button, PageHeader } from "../ui";
 
 export function TogetherScreen() {
   const { data, clock, openShare, joinShare, leaveShare, saveProfile } = useApp();
@@ -54,7 +54,7 @@ export function TogetherScreen() {
 
   return (
     <div className="space-y-5">
-      <h1 className="serif text-4xl">Together</h1>
+      <PageHeader title="Together" />
       {share && home ? (
         <>
           <button
@@ -63,7 +63,7 @@ export function TogetherScreen() {
             onClick={() => void navigator.clipboard?.writeText(home.code)}
           >
             <p className="text-xs text-muted">Our code</p>
-            <p className="serif mt-1 text-5xl tracking-wide">{home.code}</p>
+            <p className="serif mt-1 break-all text-4xl tracking-wide sm:text-5xl">{home.code}</p>
           </button>
           <div className="flex flex-wrap gap-2">
             {home.members.map((member) => (
@@ -83,8 +83,8 @@ export function TogetherScreen() {
             await openShare();
           })}>Make our code</Button>
           <div className="flex gap-2">
-            <input className="min-h-12 flex-1 rounded-full border border-line bg-elev px-4" value={code} placeholder="Code" onChange={(event) => setCode(event.target.value)} />
-            <Button disabled={busy || code.trim().length < 4} onClick={() => void run(() => joinShare(code, name))}>Join</Button>
+            <input className="min-h-12 min-w-0 flex-1 rounded-full border border-line bg-elev px-4" value={code} placeholder="Code" onChange={(event) => setCode(event.target.value)} />
+            <Button className="shrink-0" disabled={busy || code.trim().length < 4} onClick={() => void run(() => joinShare(code, name))}>Join</Button>
           </div>
         </div>
       )}

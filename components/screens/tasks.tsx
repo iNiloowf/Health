@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useApp } from "@/lib/store";
 import { AddTaskButton, TaskDetail, TaskRow } from "../tasks";
-import { Empty, Segmented } from "../ui";
+import { Empty, PageHeader, Segmented } from "../ui";
 
 const FILTERS = [
   { id: "today", label: "Tonight" },
@@ -34,12 +34,7 @@ export function TasksScreen() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-end justify-between gap-3">
-        <div>
-          <h1 className="serif text-4xl">Tasks</h1>
-        </div>
-        <AddTaskButton />
-      </div>
+      <PageHeader title="Tasks" action={<AddTaskButton />} />
       <input className="min-h-11 w-full rounded-full border border-line bg-elev px-4" placeholder="Search" value={query} onChange={(event) => setQuery(event.target.value)} aria-label="Search tasks" />
       <Segmented value={filter} options={FILTERS} onChange={setFilter} />
       <div className="space-y-2">

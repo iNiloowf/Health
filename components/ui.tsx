@@ -48,7 +48,16 @@ export function Field({ label, children }: { label: string; children: ReactNode 
   );
 }
 
-export const controlClass = "min-h-11 w-full rounded-3xl border border-line bg-bg/70 px-3 outline-none";
+export const controlClass = "min-h-11 w-full min-w-0 max-w-full rounded-3xl border border-line bg-bg/70 px-3 outline-none";
+
+export function PageHeader({ title, action }: { title: string; action?: ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-3">
+      <h1 className="serif min-w-0 text-3xl leading-none sm:text-4xl">{title}</h1>
+      {action ? <div className="shrink-0">{action}</div> : null}
+    </div>
+  );
+}
 
 export function ProgressRing({ value, size = 92, label }: { value: number; size?: number; label?: string }) {
   const calm = useCalm();
@@ -116,13 +125,14 @@ export function Sheet({ open, title, onClose, children }: { open: boolean; title
             aria-modal="true"
             aria-label={title}
             tabIndex={-1}
-            className="absolute inset-x-0 bottom-0 max-h-[min(92dvh,860px)] overflow-y-auto rounded-t-[28px] border border-line bg-bg p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-2xl md:inset-auto md:left-1/2 md:top-1/2 md:w-[min(560px,calc(100%-2rem))] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[28px]"
+            className="absolute inset-x-0 bottom-0 max-h-[min(92dvh,860px)] overflow-y-auto overscroll-contain rounded-t-[28px] border border-line bg-bg p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-2xl md:inset-auto md:left-1/2 md:top-1/2 md:w-[min(560px,calc(100%-2rem))] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[28px]"
             initial={calm ? { opacity: 0 } : { y: 40, opacity: 0 }}
             animate={calm ? { opacity: 1 } : { y: 0, opacity: 1 }}
             exit={calm ? { opacity: 0 } : { y: 24, opacity: 0 }}
           >
+            <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-line md:hidden" aria-hidden />
             <div className="mb-4 flex items-center justify-between gap-3">
-              <h2 className="serif text-2xl">{title}</h2>
+              <h2 className="serif min-w-0 flex-1 truncate text-2xl">{title}</h2>
               <button type="button" className="grid h-10 w-10 place-items-center rounded-full bg-elev" onClick={onClose} aria-label="Close dialog">
                 <X size={18} />
               </button>
@@ -147,7 +157,7 @@ export function Empty({ title, body, action }: { title: string; body: string; ac
 
 export function Segmented({ value, options, onChange }: { value: string; options: Array<{ id: string; label: string }>; onChange: (id: string) => void }) {
   return (
-    <div className="flex gap-1 overflow-x-auto rounded-full bg-elev p-1" role="tablist">
+    <div className="flex flex-wrap gap-1 rounded-[28px] bg-elev p-1" role="tablist">
       {options.map((option) => (
         <button
           key={option.id}
@@ -155,7 +165,7 @@ export function Segmented({ value, options, onChange }: { value: string; options
           role="tab"
           aria-selected={value === option.id}
           onClick={() => onChange(option.id)}
-          className={cx("min-h-10 shrink-0 rounded-full px-3 text-sm", value === option.id ? "bg-ink text-bg" : "text-muted")}
+          className={cx("min-h-10 flex-1 whitespace-nowrap rounded-full px-3 text-sm", value === option.id ? "bg-ink text-bg" : "text-muted")}
         >
           {option.label}
         </button>

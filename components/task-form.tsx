@@ -179,7 +179,7 @@ export function TaskForm({ initial, onClose, lock }: { initial?: Task; onClose: 
           <input className={controlClass} type="number" min={1} max={31} value={recurrence.dayOfMonth ?? 1} onChange={(event) => setRecurrence({ type: "monthly", dayOfMonth: Number(event.target.value) })} />
         </Field>
       ) : null}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2">
         <Field label="Starts">
           <input className={controlClass} type="date" value={anchorDate} onChange={(event) => setAnchorDate(event.target.value)} />
         </Field>

@@ -28,7 +28,7 @@ export function TaskRow({ occurrence, onOpen }: { occurrence: Occurrence; onOpen
       </motion.button>
       <button type="button" onClick={onOpen} className="min-w-0 flex-1 py-1 text-left">
         <span className={`block truncate ${done ? "text-muted line-through" : ""}`}>{occurrence.titleSnapshot}</span>
-        <span className="mt-0.5 block text-xs text-muted">
+        <span className="mt-0.5 block text-xs leading-5 text-muted">
           {formatTime(occurrence.time)} · {occurrence.durationMinutes} min
           {occurrence.status === "missed" ? " · needs a new time" : ""}
           {occurrence.rescheduledFrom ? " · moved" : ""}
@@ -62,9 +62,10 @@ export function TaskDetail({ occurrenceId, onClose }: { occurrenceId: string | n
       <img src={task.image} alt="" className="mb-4 h-36 w-full rounded-2xl object-cover" />
     ) : null}
       <p className="text-sm leading-6 text-muted">{task?.description || "No description yet."}</p>
-      <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
+      <dl className="mt-4 grid grid-cols-1 gap-3 text-sm min-[380px]:grid-cols-2">
         <Info label="When" value={`${formatMedium(occurrence.date)} · ${formatTime(occurrence.time)}`} />
         <Info label="Status" value={occurrence.status} />
+        {occurrence.doneBy ? <Info label="Done by" value={occurrence.doneBy} /> : null}
         <Info label="Repeats" value={task ? recurrenceLabel(task.recurrence) : "One time"} />
         <Info label="Streak" value={task ? `${task.streak}${task.atRisk ? " at risk" : ""}` : "0"} />
       </dl>
@@ -88,9 +89,9 @@ export function TaskDetail({ occurrenceId, onClose }: { occurrenceId: string | n
         <span className="text-muted">Note for this time</span>
         <textarea className="mt-1 min-h-20 w-full rounded-2xl border border-line bg-bg/70 px-3 py-2" defaultValue={occurrence.note ?? ""} onBlur={(event) => saveNote(occurrence.id, event.target.value)} />
       </label>
-      <div className="mt-4 grid grid-cols-2 gap-2">
-        <input className="min-h-11 rounded-2xl border border-line bg-bg/70 px-3" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
-        <input className="min-h-11 rounded-2xl border border-line bg-bg/70 px-3" type="time" value={time} onChange={(event) => setTime(event.target.value)} />
+      <div className="mt-4 grid grid-cols-1 gap-2 min-[380px]:grid-cols-2">
+        <input className="min-h-11 min-w-0 rounded-2xl border border-line bg-bg/70 px-3" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+        <input className="min-h-11 min-w-0 rounded-2xl border border-line bg-bg/70 px-3" type="time" value={time} onChange={(event) => setTime(event.target.value)} />
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
         {occurrence.status !== "completed" ? <Button onClick={() => complete(occurrence.id)}>Complete</Button> : null}
@@ -119,7 +120,7 @@ function Info({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl bg-bg/70 px-3 py-2">
       <dt className="text-xs text-muted">{label}</dt>
-      <dd className="capitalize">{value}</dd>
+      <dd className="break-words capitalize">{value}</dd>
     </div>
   );
 }

@@ -34,7 +34,7 @@ export function ReminderHost() {
   if (!items.length) return null;
   const current = items[0];
   return (
-    <div className="fixed inset-x-4 top-4 z-[65] mx-auto max-w-md rounded-[24px] border border-line bg-elev p-4 shadow-xl md:right-6 md:left-auto">
+    <div className="fixed inset-x-4 top-[max(1rem,env(safe-area-inset-top))] z-[65] mx-auto max-w-md rounded-[24px] border border-line bg-elev p-4 shadow-xl md:right-6 md:left-auto">
       <p className="text-xs uppercase tracking-[0.16em] text-muted">Reminder</p>
       <h2 className="serif mt-1 text-2xl">{current.title}</h2>
       <p className="mt-1 text-sm text-muted">{current.body}</p>

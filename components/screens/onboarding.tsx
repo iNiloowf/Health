@@ -60,7 +60,7 @@ export function OnboardingScreen({ mode }: { mode: "create" | "edit" }) {
   }
 
   return (
-    <div className="flex min-h-[calc(100dvh-3rem)] flex-col">
+    <div className="flex min-h-[calc(100dvh-1.5rem)] flex-col">
       <div className="mb-6 flex items-center justify-between text-sm text-muted">
         <span className="serif text-2xl text-ink">Hearth</span>
         <span>{step + 1} / {steps.length}</span>
@@ -69,19 +69,19 @@ export function OnboardingScreen({ mode }: { mode: "create" | "edit" }) {
         <div className="h-full bg-accent" style={{ width: `${((step + 1) / steps.length) * 100}%` }} />
       </div>
       {calm ? (
-        <div className="flex-1">{steps[step]}</div>
+        <div className="flex-1 pb-6">{steps[step]}</div>
       ) : (
         <AnimatePresence mode="wait">
-          <motion.div key={step} className="flex-1" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
+          <motion.div key={step} className="flex-1 pb-6" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
             {steps[step]}
           </motion.div>
         </AnimatePresence>
       )}
       {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
-      <div className="mt-6 flex gap-2">
+      <div className="sticky bottom-0 z-10 -mx-4 mt-auto flex gap-2 border-t border-line bg-bg/95 px-4 py-3 backdrop-blur-xl" style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}>
         {step > 0 ? <Button variant="quiet" onClick={() => setStep(step - 1)}>Back</Button> : null}
         {step > 0 && step < steps.length - 1 ? <Button variant="ghost" onClick={() => setStep(step + 1)}>Skip</Button> : null}
-        <Button className="flex-1" onClick={next}>{step === steps.length - 1 ? "Done" : "Continue"}</Button>
+        <Button className="min-w-0 flex-1" onClick={next}>{step === steps.length - 1 ? "Done" : "Continue"}</Button>
       </div>
     </div>
   );
@@ -90,7 +90,7 @@ export function OnboardingScreen({ mode }: { mode: "create" | "edit" }) {
 function NameStep({ name, onChange }: { name: string; onChange: (name: string) => void }) {
   return (
     <div>
-      <h2 className="serif text-4xl">Name</h2>
+      <h2 className="serif text-3xl leading-tight sm:text-4xl">Name</h2>
       <input className="mt-6 min-h-14 w-full rounded-3xl border border-line bg-elev px-4 text-lg" value={name} onChange={(event) => onChange(event.target.value)} placeholder="Your name" />
     </div>
   );
@@ -99,8 +99,8 @@ function NameStep({ name, onChange }: { name: string; onChange: (name: string) =
 function TimeStep({ title, a, b, aLabel, bLabel, onA, onB }: { title: string; a: string; b: string; aLabel: string; bLabel: string; onA: (value: string) => void; onB: (value: string) => void }) {
   return (
     <div>
-      {title ? <h2 className="serif text-4xl">{title}</h2> : null}
-      <div className={`${title ? "mt-6" : ""} grid grid-cols-2 gap-3`}>
+      {title ? <h2 className="serif text-3xl leading-tight sm:text-4xl">{title}</h2> : null}
+      <div className={`${title ? "mt-6" : ""} grid grid-cols-1 gap-3 sm:grid-cols-2`}>
         <label className="text-sm text-muted">{aLabel}<input className="mt-1 min-h-12 w-full rounded-2xl border border-line bg-elev px-3 text-ink" type="time" value={a} onChange={(event) => onA(event.target.value)} /></label>
         <label className="text-sm text-muted">{bLabel}<input className="mt-1 min-h-12 w-full rounded-2xl border border-line bg-elev px-3 text-ink" type="time" value={b} onChange={(event) => onB(event.target.value)} /></label>
       </div>
@@ -111,7 +111,7 @@ function TimeStep({ title, a, b, aLabel, bLabel, onA, onB }: { title: string; a:
 function AvailabilityStep({ answers, onChange }: { answers: OnboardingAnswers; onChange: (patch: Partial<OnboardingAnswers>) => void }) {
   return (
     <div className="space-y-4">
-      <h2 className="serif text-4xl">Free time</h2>
+      <h2 className="serif text-3xl leading-tight sm:text-4xl">Free time</h2>
       <TimeStep title="" a={answers.availabilityStart} b={answers.availabilityEnd} aLabel="From" bLabel="Until" onA={(availabilityStart) => onChange({ availabilityStart })} onB={(availabilityEnd) => onChange({ availabilityEnd })} />
       <label className="block text-sm text-muted">Week starts
         <select className="mt-1 min-h-12 w-full rounded-2xl border border-line bg-elev px-3 text-ink" value={answers.weekStartsOn} onChange={(event) => onChange({ weekStartsOn: Number(event.target.value) as 0 | 1 })}>
@@ -126,7 +126,7 @@ function AvailabilityStep({ answers, onChange }: { answers: OnboardingAnswers; o
 function ChoreStep({ title, paces, onChange }: { title: string; paces: Record<string, Pace>; onChange: (paces: Record<string, Pace>) => void }) {
   return (
     <div>
-      <h2 className="serif text-4xl">{title}</h2>
+      <h2 className="serif text-3xl leading-tight sm:text-4xl">{title}</h2>
       <ul className="mt-4 space-y-3">
         {CHORE_TEMPLATES.map((chore) => (
           <li key={chore.id} className="card p-3">
@@ -147,7 +147,7 @@ function StartStep({ chores, starting, onChange }: { chores: Record<string, Pace
   const left = CHORE_TEMPLATES.filter((chore) => (chores[chore.id] ?? "never") === "never");
   return (
     <div>
-      <h2 className="serif text-4xl">Start any?</h2>
+      <h2 className="serif text-3xl leading-tight sm:text-4xl">Start any?</h2>
       <ul className="mt-4 space-y-3">
         {left.map((chore) => (
           <li key={chore.id} className="card p-3">
@@ -168,7 +168,7 @@ function PetStep({ pets, onChange }: { pets: OnboardingAnswers["pets"]; onChange
   const list = pets.length ? pets : [];
   return (
     <div>
-      <h2 className="serif text-4xl">Pets</h2>
+      <h2 className="serif text-3xl leading-tight sm:text-4xl">Pets</h2>
       {list.map((pet, index) => (
         <div key={index} className="card mt-3 space-y-2 p-3">
           <input className="min-h-11 w-full rounded-2xl border border-line bg-bg px-3" placeholder="Name" value={pet.name} onChange={(event) => onChange(list.map((item, itemIndex) => itemIndex === index ? { ...item, name: event.target.value } : item))} />
@@ -192,7 +192,7 @@ function HabitStep({ habits, onChange }: { habits: string[]; onChange: (habits: 
   const [custom, setCustom] = useState("");
   return (
     <div>
-      <h2 className="serif text-4xl">Personal habits</h2>
+      <h2 className="serif text-3xl leading-tight sm:text-4xl">Personal habits</h2>
       <div className="mt-4 flex flex-wrap gap-2">
         {HABIT_SUGGESTIONS.map((habit) => {
           const on = habits.includes(habit);
@@ -200,8 +200,8 @@ function HabitStep({ habits, onChange }: { habits: string[]; onChange: (habits: 
         })}
       </div>
       <div className="mt-4 flex gap-2">
-        <input className="min-h-11 flex-1 rounded-full border border-line bg-elev px-4" value={custom} placeholder="Your own" onChange={(event) => setCustom(event.target.value)} />
-        <Button variant="quiet" onClick={() => { if (custom.trim()) { onChange([...habits, custom.trim()]); setCustom(""); } }}>Add</Button>
+        <input className="min-h-11 min-w-0 flex-1 rounded-full border border-line bg-elev px-4" value={custom} placeholder="Your own" onChange={(event) => setCustom(event.target.value)} />
+        <Button className="shrink-0" variant="quiet" onClick={() => { if (custom.trim()) { onChange([...habits, custom.trim()]); setCustom(""); } }}>Add</Button>
       </div>
     </div>
   );
@@ -210,7 +210,7 @@ function HabitStep({ habits, onChange }: { habits: string[]; onChange: (habits: 
 function WorkStep({ answers, onChange }: { answers: OnboardingAnswers; onChange: (patch: Partial<OnboardingAnswers>) => void }) {
   return (
     <div>
-      <h2 className="serif text-4xl">Work and projects</h2>
+      <h2 className="serif text-3xl leading-tight sm:text-4xl">Work and projects</h2>
       <div className="mt-4 flex flex-wrap gap-2">
         {WORK_AREAS.map((area) => {
           const on = answers.workAreas.includes(area.id);
@@ -231,7 +231,7 @@ function WorkStep({ answers, onChange }: { answers: OnboardingAnswers; onChange:
 function GoalStep({ goals, onChange }: { goals: string[]; onChange: (goals: string[]) => void }) {
   return (
     <div>
-      <h2 className="serif text-4xl">Goals</h2>
+      <h2 className="serif text-3xl leading-tight sm:text-4xl">Goals</h2>
       <textarea className="mt-4 min-h-40 w-full rounded-3xl border border-line bg-elev p-4" value={goals.join("\n")} onChange={(event) => onChange(event.target.value.split("\n"))} />
     </div>
   );
@@ -240,7 +240,7 @@ function GoalStep({ goals, onChange }: { goals: string[]; onChange: (goals: stri
 function PreferenceStep({ answers, onChange }: { answers: OnboardingAnswers; onChange: (patch: Partial<OnboardingAnswers>) => void }) {
   return (
     <div className="space-y-4">
-      <h2 className="serif text-4xl">Feel</h2>
+      <h2 className="serif text-3xl leading-tight sm:text-4xl">Feel</h2>
       <label className="block text-sm text-muted">Reminders
         <select className="mt-1 min-h-12 w-full rounded-2xl border border-line bg-elev px-3 text-ink" value={answers.reminderStyle} onChange={(event) => onChange({ reminderStyle: event.target.value as OnboardingAnswers["reminderStyle"] })}>
           <option value="gentle">Gentle</option>
@@ -269,7 +269,7 @@ function PreferenceStep({ answers, onChange }: { answers: OnboardingAnswers; onC
 function ReviewStep({ plan, tasksOn, petsOn, projectsOn, setTasksOn, setPetsOn, setProjectsOn }: { plan: ReturnType<typeof buildPlan>; tasksOn: Record<string, boolean>; petsOn: Record<string, boolean>; projectsOn: Record<string, boolean>; setTasksOn: (value: Record<string, boolean>) => void; setPetsOn: (value: Record<string, boolean>) => void; setProjectsOn: (value: Record<string, boolean>) => void }) {
   return (
     <div>
-      <h2 className="serif text-4xl">Start with</h2>
+      <h2 className="serif text-3xl leading-tight sm:text-4xl">Start with</h2>
       <ul className="mt-4 space-y-2">
         {plan.pets.map((pet) => (
           <li key={pet.key}><label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" checked={petsOn[pet.key] !== false} onChange={(event) => setPetsOn({ ...petsOn, [pet.key]: event.target.checked })} />Pet · {pet.name}</label></li>
@@ -278,7 +278,7 @@ function ReviewStep({ plan, tasksOn, petsOn, projectsOn, setTasksOn, setPetsOn, 
           <li key={project.key}><label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" checked={projectsOn[project.key] !== false} onChange={(event) => setProjectsOn({ ...projectsOn, [project.key]: event.target.checked })} />Project · {project.name}</label></li>
         ))}
         {plan.tasks.map((task) => (
-          <li key={task.key}><label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" checked={tasksOn[task.key] !== false} onChange={(event) => setTasksOn({ ...tasksOn, [task.key]: event.target.checked })} />{task.title}<span className="text-muted">{task.detail}</span></label></li>
+          <li key={task.key}><label className="flex min-h-11 items-start gap-3 py-2 text-sm"><input className="mt-1 shrink-0" type="checkbox" checked={tasksOn[task.key] !== false} onChange={(event) => setTasksOn({ ...tasksOn, [task.key]: event.target.checked })} /><span className="min-w-0">{task.title} <span className="text-muted">{task.detail}</span></span></label></li>
         ))}
       </ul>
     </div>

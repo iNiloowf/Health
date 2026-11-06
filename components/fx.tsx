@@ -24,7 +24,7 @@ export function CelebrationHost() {
           {current.type === "level" ? <Confetti onDone={() => undefined} /> : null}
           <div className="card w-full max-w-sm p-6 text-center">
             <p className="text-xs uppercase tracking-[0.2em] text-muted">{current.type === "level" ? "Level up" : "Achievement"}</p>
-            <h3 className="serif mt-2 text-4xl">{current.type === "level" ? current.title : achievementName(current.achievementId || "")}</h3>
+            <h3 className="serif mt-2 break-words text-3xl leading-tight sm:text-4xl">{current.type === "level" ? current.title : achievementName(current.achievementId || "")}</h3>
             <p className="mt-2 text-sm text-muted">{current.type === "level" ? `You reached level ${current.level}.` : "A quiet milestone, saved."}</p>
             <button type="button" className="mt-5 min-h-11 rounded-full bg-accent px-5 text-sm text-accent-ink" onClick={() => dismissCelebration(current.id)}>
               Continue
@@ -88,7 +88,7 @@ export function ToastHost() {
       {toast ? (
         <motion.div
           role="status"
-          className="fixed bottom-24 left-1/2 z-[70] flex min-h-12 -translate-x-1/2 items-center gap-3 rounded-full border border-line bg-ink px-4 text-sm text-bg shadow-lg md:bottom-6"
+          className="fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] left-1/2 z-[70] flex max-w-[calc(100%-2rem)] min-h-12 -translate-x-1/2 items-center gap-3 rounded-full border border-line bg-ink px-4 text-center text-sm text-bg shadow-lg md:bottom-6"
           initial={{ y: 12, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ opacity: 0 }}

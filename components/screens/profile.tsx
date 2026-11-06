@@ -15,14 +15,14 @@ export function ProfileScreen() {
     <div className="space-y-6">
       <header className="flex items-center gap-4">
         <Avatar profile={profile} onChange={(avatar) => saveProfile({ avatar })} />
-        <div>
-          <h1 className="serif text-4xl">{profile.name || "Your profile"}</h1>
-          <p className="text-sm text-muted">{profile.timezone}</p>
+        <div className="min-w-0">
+          <h1 className="serif break-words text-3xl leading-none sm:text-4xl">{profile.name || "Your profile"}</h1>
+          <p className="mt-1 truncate text-sm text-muted">{profile.timezone}</p>
         </div>
       </header>
       <section className="card space-y-3 p-4">
         <Field label="Name"><input className={controlClass} defaultValue={profile.name} onBlur={(event) => saveProfile({ name: event.target.value })} /></Field>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 [&>*]:min-w-0">
           <Field label="Wake"><input className={controlClass} type="time" defaultValue={profile.wake} onBlur={(event) => saveProfile({ wake: event.target.value })} /></Field>
           <Field label="Sleep"><input className={controlClass} type="time" defaultValue={profile.sleep} onBlur={(event) => saveProfile({ sleep: event.target.value })} /></Field>
           <Field label="Available from"><input className={controlClass} type="time" defaultValue={profile.availabilityStart} onBlur={(event) => saveProfile({ availabilityStart: event.target.value })} /></Field>
@@ -152,9 +152,9 @@ function Categories({ dataCategories, onAdd, onRemove }: { dataCategories: { id:
           </li>
         ))}
       </ul>
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row">
         <input className={controlClass} placeholder="New category" value={name} onChange={(event) => setName(event.target.value)} />
-        <select className={controlClass} value={area} onChange={(event) => setArea(event.target.value as import("@/lib/types").Area)}>
+        <select className={`${controlClass} sm:max-w-40`} value={area} onChange={(event) => setArea(event.target.value as import("@/lib/types").Area)}>
           <option value="household">Household</option>
           <option value="habit">Habit</option>
           <option value="health">Health</option>
@@ -175,7 +175,7 @@ function Auth({ onIn, onUp }: { onIn: (email: string, password: string) => Promi
     <form className="space-y-2" onSubmit={async (event) => { event.preventDefault(); await onIn(email, password); }}>
       <input className={controlClass} type="email" required placeholder="Email" value={email} onChange={(event) => setEmail(event.target.value)} />
       <input className={controlClass} type="password" required minLength={6} placeholder="Password" value={password} onChange={(event) => setPassword(event.target.value)} />
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button type="submit">Sign in</Button>
         <Button type="button" variant="quiet" onClick={async () => setNote(await onUp(email, password))}>Create account</Button>
       </div>

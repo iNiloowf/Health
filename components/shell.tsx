@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Icon } from "./icon";
 import { CelebrationHost, ToastHost } from "./fx";
 import { ReminderHost } from "./reminders-host";
 import { useApp } from "@/lib/store";
+import { Sheet } from "./ui";
 
 const PRIMARY = [
   { href: "/", label: "Home", icon: "House" },
@@ -29,7 +30,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { ready, error, data } = useApp();
+  const [lifeOpen, setLifeOpen] = useState(false);
   const onboarding = pathname === "/onboarding" || pathname === "/onboarding/edit";
+  const here = MORE.find((item) => item.href === pathname);
 
   useEffect(() => {
     const theme = data.profile?.theme ?? window.localStorage.getItem("hearth-theme") ?? "system";
@@ -52,7 +55,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
   const waiting = !ready || Boolean(ready && !data.profile?.onboarded && !onboarding) || Boolean(data.profile?.onboarded && pathname === "/onboarding");
   const frame = onboarding ? (
-    <main className="mx-auto min-h-dvh w-full max-w-lg px-4 py-6">{children}</main>
+    <main className="mx-auto min-h-dvh w-full max-w-lg px-4 pt-[max(1.5rem,env(safe-area-inset-top))]">{children}</main>
   ) : (
     <div className="mx-auto flex min-h-dvh w-full max-w-6xl">
           <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col gap-6 px-4 py-6 md:flex">
@@ -70,7 +73,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </nav>
           </aside>
           <div className="min-w-0 flex-1">
-            <main className="safe-bottom mx-auto w-full max-w-3xl px-4 pt-6 md:px-8 md:pb-12">{children}</main>
+            <div className="sticky top-0 z-20 flex items-center justify-between border-b border-line/80 bg-bg/85 px-4 py-2.5 backdrop-blur-xl md:hidden" style={{ paddingTop: "calc(0.625rem + env(safe-area-inset-top))" }}>
+              <Link href="/" className="serif text-2xl leading-none">Hearth</Link>
+              <button type="button" className={`inline-flex min-h-10 items-center gap-2 rounded-full px-3 text-sm ${here ? "bg-accent-soft text-ink" : "bg-elev text-muted"}`} onClick={() => setLifeOpen(true)} aria-haspopup="dialog">
+                <Icon name={here?.icon ?? "Sparkles"} size={16} />
+                {here?.label ?? "Life"}
+              </button>
+            </div>
+            <main className="safe-bottom mx-auto w-full max-w-3xl px-4 pt-4 md:px-8 md:pt-6 md:pb-12">{children}</main>
           </div>
           <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-elev/95 backdrop-blur-xl md:hidden" aria-label="Primary" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
             <ul className="mx-auto grid max-w-lg grid-cols-5">
@@ -78,15 +88,27 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 const active = pathname === item.href;
                 return (
                   <li key={item.href}>
-                    <Link href={item.href} className={`flex min-h-16 flex-col items-center justify-center gap-1 text-[11px] ${active ? "text-accent" : "text-muted"}`} aria-current={active ? "page" : undefined}>
-                      <Icon name={item.icon} size={20} />
-                      {item.label}
+                    <Link href={item.href} className={`flex min-h-[4.25rem] flex-col items-center justify-center gap-0.5 px-0.5 text-[10px] leading-none ${active ? "text-accent" : "text-muted"}`} aria-current={active ? "page" : undefined}>
+                      <span className={`grid h-8 w-11 place-items-center rounded-full ${active ? "bg-accent-soft" : ""}`}>
+                        <Icon name={item.icon} size={18} />
+                      </span>
+                      <span className="max-w-full truncate">{item.label}</span>
                     </Link>
                   </li>
                 );
               })}
             </ul>
           </nav>
+          <Sheet open={lifeOpen} title="Life" onClose={() => setLifeOpen(false)}>
+            <div className="grid grid-cols-2 gap-2">
+              {MORE.map((item) => (
+                <Link key={item.href} href={item.href} onClick={() => setLifeOpen(false)} className={`card flex min-h-16 items-center gap-3 px-4 text-sm ${pathname === item.href ? "bg-accent-soft" : ""}`}>
+                  <Icon name={item.icon} size={18} />
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+          </Sheet>
     </div>
   );
 

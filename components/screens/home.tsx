@@ -30,12 +30,14 @@ export function HomeScreen() {
 
   return (
     <div className="space-y-6">
-      <header className="flex items-end justify-between gap-4">
-        <div>
+      <header className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
           <p className="text-sm text-muted">{formatLong(clock.today)}</p>
-          <h1 className="serif mt-1 text-4xl leading-none">{greeting(data.profile?.name || "", clock.minutes)}</h1>
+          <h1 className="serif mt-1 text-[1.7rem] leading-[1.05] sm:text-4xl">{greeting(data.profile?.name || "", clock.minutes)}</h1>
         </div>
-        <ProgressRing value={progress.percent} label={progress.total ? `${progress.percent}%` : "–"} />
+        <div className="shrink-0 origin-top scale-90 sm:scale-100">
+          <ProgressRing value={progress.percent} label={progress.total ? `${progress.percent}%` : "–"} />
+        </div>
       </header>
 
       <section className="grid grid-cols-3 gap-2 text-center text-sm">
@@ -44,21 +46,21 @@ export function HomeScreen() {
         <Stat label={showXp ? "XP" : "Level"} value={showXp ? String(totalXp(data)) : String(level.level)} />
       </section>
 
-      <section className="flex items-center justify-between text-sm">
+      <section className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm">
         <p className="flex items-center gap-2 text-muted"><Icon name="Flame" size={16} /> {dayStreak(data.occurrences, clock.today).current} day rhythm</p>
         <p className="text-muted">{level.title}</p>
       </section>
 
       {missed ? (
-        <div className="card flex items-center justify-between gap-3 p-4">
+        <div className="card flex flex-col items-stretch gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm">{missed} task{missed === 1 ? "" : "s"} can move to a better time.</p>
-          <Button variant="quiet" onClick={() => setPlanning(true)}>Reschedule</Button>
+          <Button variant="quiet" className="shrink-0" onClick={() => setPlanning(true)}>Reschedule</Button>
         </div>
       ) : null}
 
       {allDone ? (
         <section className="card p-6 text-center">
-          <h2 className="serif text-4xl">All done</h2>
+          <h2 className="serif text-3xl sm:text-4xl">All done</h2>
         </section>
       ) : next ? (
         <section>
@@ -85,13 +87,13 @@ export function HomeScreen() {
 
       <section>
         <h2 className="mb-2 text-sm text-muted">This week</h2>
-        <div className="grid grid-cols-7 gap-1.5">
+        <div className="grid grid-cols-7 gap-1">
           {week.map((day) => (
-            <div key={day.date} className="text-center">
-              <div className={`mx-auto grid h-10 w-10 place-items-center rounded-full text-xs ${day.date === clock.today ? "bg-ink text-bg" : day.total && day.done === day.total ? "bg-accent-soft" : "bg-elev"}`}>
+            <div key={day.date} className="min-w-0 text-center">
+              <div className={`mx-auto grid aspect-square w-full max-w-10 place-items-center rounded-full text-[11px] sm:text-xs ${day.date === clock.today ? "bg-ink text-bg" : day.total && day.done === day.total ? "bg-accent-soft" : "bg-elev"}`}>
                 {day.total ? Math.round((day.done / day.total) * 100) : "·"}
               </div>
-              <p className="mt-1 text-[11px] text-muted">{formatWeekday(day.date, "narrow")}</p>
+              <p className="mt-1 truncate text-[10px] text-muted sm:text-[11px]">{formatWeekday(day.date, "narrow")}</p>
             </div>
           ))}
         </div>
@@ -101,9 +103,9 @@ export function HomeScreen() {
         <section className="space-y-2">
           <h2 className="text-sm text-muted">Upcoming reminders</h2>
           {reminders.map((item) => (
-            <button key={item.id} type="button" onClick={() => setSelected(item.id)} className="card flex w-full items-center justify-between px-4 py-3 text-left text-sm">
-              <span>{item.titleSnapshot}</span>
-              <span className="text-muted">{item.date === clock.today ? formatTime(item.time) : formatMedium(item.date)}</span>
+            <button key={item.id} type="button" onClick={() => setSelected(item.id)} className="card flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm">
+              <span className="min-w-0 truncate">{item.titleSnapshot}</span>
+              <span className="shrink-0 text-muted">{item.date === clock.today ? formatTime(item.time) : formatMedium(item.date)}</span>
             </button>
           ))}
         </section>
@@ -119,7 +121,7 @@ export function HomeScreen() {
           ["/achievements", "Awards", "Trophy"],
           ["/progress", "Insights", "TrendingUp"],
         ].map(([href, label, icon]) => (
-          <Link key={href} href={href} className="card flex min-h-16 items-center gap-3 px-4 text-sm">
+          <Link key={href} href={href} className="card flex min-h-16 items-center gap-3 px-4 text-sm last:col-span-2">
             <Icon name={icon} size={18} /> {label}
           </Link>
         ))}
@@ -133,8 +135,8 @@ export function HomeScreen() {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="card px-2 py-3">
-      <div className="serif text-2xl">{value}</div>
+    <div className="card min-w-0 px-2 py-3">
+      <div className="serif truncate text-xl sm:text-2xl">{value}</div>
       <div className="text-xs text-muted">{label}</div>
     </div>
   );

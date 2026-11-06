@@ -50,6 +50,16 @@
 
 html, body { min-height: 100%; }
 
+html { -webkit-text-size-adjust: 100%; }
+
+button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+
+input, select, textarea { max-width: 100%; }
+
+@media (max-width: 767px) {
+  input, select, textarea { font-size: 16px; }
+}
+
 body {
   margin: 0;
   background:
@@ -83,7 +93,7 @@ button { cursor: pointer; }
 
 .serif { font-family: var(--font-fredoka), ui-rounded, sans-serif; font-weight: 600; letter-spacing: -0.02em; }
 
-.safe-bottom { padding-bottom: calc(6.5rem + env(safe-area-inset-bottom)); }
+.safe-bottom { padding-bottom: calc(6.75rem + env(safe-area-inset-bottom)); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
