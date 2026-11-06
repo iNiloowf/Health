@@ -1,0 +1,10 @@
+---
+description: Commit and push finished work at the end of every task
+alwaysApply: true
+---
+
+# Push when the work is done
+
+When a requested change in this repo is finished, commit only the files that belong to that change and push them to the current branch before ending the turn.
+
+Leave unrelated uncommitted work unstaged. Do not commit secrets. Do not force-push.

@@ -35,6 +35,7 @@ export function ProgressScreen() {
           <div>
             <p className="text-xs uppercase tracking-[0.16em] text-muted">Level {level.level}</p>
             <h2 className="serif text-3xl">{level.title}</h2>
+            <p className="mt-1 text-sm text-muted">{rhythm.current} day rhythm</p>
           </div>
           <p className="text-sm text-warm">{xp} XP</p>
         </div>
