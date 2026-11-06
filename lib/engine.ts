@@ -39,6 +39,32 @@ export function freshData(): AppData {
     plannerAccepted: [],
     earlyOrganizer: false,
     firedReminders: [],
+    activity: [],
+  };
+}
+
+export function hydrate(data: AppData): AppData {
+  const blank = freshData();
+  return {
+    ...blank,
+    ...data,
+    activity: data.activity ?? [],
+    categories: data.categories?.length ? data.categories : blank.categories,
+    petSchedules: data.petSchedules ?? [],
+    achievements: data.achievements ?? [],
+    xp: data.xp ?? [],
+    firedReminders: data.firedReminders ?? [],
+    plannerAccepted: data.plannerAccepted ?? [],
+    profile: data.profile
+      ? {
+          ...data.profile,
+          showXp: data.profile.showXp ?? true,
+          share: data.profile.share ?? null,
+          onboarding: data.profile.onboarding
+            ? { ...defaultAnswers(), ...data.profile.onboarding, answeredSteps: data.profile.onboarding.answeredSteps ?? [] }
+            : null,
+        }
+      : null,
   };
 }
 
@@ -62,6 +88,7 @@ export function defaultAnswers(): OnboardingAnswers {
     reminderStyle: "gentle",
     weeklyWorkload: "balanced",
     animation: "normal",
+    answeredSteps: [],
   };
 }
 
@@ -341,6 +368,11 @@ function profileFrom(existing: Profile | null, answers: OnboardingAnswers, clock
   };
 }
 
+export function seedProfile(data: AppData, name: string, clock: Clock): AppData {
+  const profile = profileFrom(data.profile, { ...defaultAnswers(), name: name.trim() || "Me" }, clock);
+  return { ...data, profile: { ...profile, name: name.trim() || "Me", onboarded: false, onboarding: null } };
+}
+
 export function applyOnboarding(
   data: AppData,
   answers: OnboardingAnswers,
@@ -348,6 +380,7 @@ export function applyOnboarding(
   selectedPetKeys: string[],
   selectedProjectKeys: string[],
   clock: Clock,
+  options?: { keepExisting?: boolean },
 ): AppData {
   if (toMinutes(answers.availabilityEnd) <= toMinutes(answers.availabilityStart)) {
     throw new Error("Availability needs an end time after the start.");
@@ -371,7 +404,7 @@ export function applyOnboarding(
       };
       if (existing) next = updateTask({ ...next, tasks: next.tasks.map((task) => (task.id === existing.id ? { ...task, active: true } : task)) }, existing.id, input, clock);
       else next = createTask(next, input, clock);
-    } else if (existing) {
+    } else if (existing && !options?.keepExisting) {
       next = {
         ...next,
         tasks: next.tasks.map((task) => (task.id === existing.id ? { ...task, active: false, updatedAt: clock.iso } : task)),
@@ -550,9 +583,22 @@ export function completeOccurrence(data: AppData, id: string, clock: Clock): App
   const xp = already
     ? data.xp
     : [...data.xp, { id: uid(), amount: current.xpReward, reason: "task", occurrenceId: id, taskId: current.taskId, createdAt: clock.iso }];
+  const name = data.profile?.name || "Me";
   return {
     ...data,
     xp,
+    activity: [
+      {
+        id: uid(),
+        at: clock.iso,
+        name,
+        memberId: data.profile?.share?.memberId || data.profile?.id || "local",
+        title: current.titleSnapshot,
+        taskId: current.taskId,
+        occurrenceId: id,
+      },
+      ...(data.activity ?? []),
+    ].slice(0, 300),
     occurrences: data.occurrences.map((item) =>
       item.id === id
         ? {
@@ -846,7 +892,7 @@ export function importData(raw: string): AppData {
   if (parsed.version !== 1 || !Array.isArray(parsed.tasks) || !Array.isArray(parsed.occurrences)) {
     throw new Error("That backup is missing Hearth data.");
   }
-  return {
+  return hydrate({
     ...freshData(),
     ...parsed,
     profile: parsed.profile ? { ...parsed.profile, showXp: parsed.profile.showXp ?? true } : null,
@@ -855,5 +901,5 @@ export function importData(raw: string): AppData {
     petSchedules: parsed.petSchedules ?? [],
     achievements: parsed.achievements ?? [],
     xp: parsed.xp ?? [],
-  };
+  });
 }

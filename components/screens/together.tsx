@@ -1,14 +1,17 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { pullHome } from "@/lib/share-client";
 import type { SharedHome } from "@/lib/share";
 import { useApp } from "@/lib/store";
+import { ActivityLog } from "../activity";
 import { TaskDetail, TaskRow } from "../tasks";
 import { Button, PageHeader } from "../ui";
 
 export function TogetherScreen() {
   const { data, clock, openShare, joinShare, leaveShare, saveProfile } = useApp();
+  const router = useRouter();
   const share = data.profile?.share ?? null;
   const [code, setCode] = useState("");
   const [name, setName] = useState(data.profile?.name ?? "");
@@ -73,6 +76,10 @@ export function TogetherScreen() {
           <div className="space-y-2">
             {today.map((item) => <TaskRow key={item.id} occurrence={item} onOpen={() => setSelected(item.id)} />)}
           </div>
+          <section className="space-y-2">
+            <h2 className="text-sm text-muted">Who did it</h2>
+            <ActivityLog empty="When one of you finishes a task, their name is kept here." />
+          </section>
           <Button variant="quiet" disabled={busy} onClick={() => void run(leaveShare)}>Leave</Button>
         </>
       ) : (
@@ -84,7 +91,10 @@ export function TogetherScreen() {
           })}>Make our code</Button>
           <div className="flex gap-2">
             <input className="min-h-12 min-w-0 flex-1 rounded-full border border-line bg-elev px-4" value={code} placeholder="Code" onChange={(event) => setCode(event.target.value)} />
-            <Button className="shrink-0" disabled={busy || code.trim().length < 4} onClick={() => void run(() => joinShare(code, name))}>Join</Button>
+            <Button className="shrink-0" disabled={busy || code.trim().length < 4} onClick={() => void run(async () => {
+              const result = await joinShare(code, name);
+              if (result === "questions") router.push("/onboarding");
+            })}>Join</Button>
           </div>
         </div>
       )}

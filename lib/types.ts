@@ -186,6 +186,7 @@ export interface OnboardingAnswers {
   reminderStyle: ReminderStyle;
   weeklyWorkload: Workload;
   animation: AnimationLevel;
+  answeredSteps: string[];
 }
 
 export interface Profile {
@@ -225,6 +226,16 @@ export interface ShareLink {
   revision: number;
 }
 
+export interface ActivityEntry {
+  id: string;
+  at: string;
+  name: string;
+  memberId: string;
+  title: string;
+  taskId: string;
+  occurrenceId: string;
+}
+
 export interface AppData {
   version: 1;
   profile: Profile | null;
@@ -239,6 +250,7 @@ export interface AppData {
   plannerAccepted: string[];
   earlyOrganizer: boolean;
   firedReminders: string[];
+  activity: ActivityEntry[];
 }
 
 export interface TaskInput {

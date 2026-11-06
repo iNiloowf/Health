@@ -5,17 +5,23 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { addDays, toMinutes } from "@/lib/dates";
 import { buildPlan, defaultAnswers } from "@/lib/engine";
+import { openChoreIds, openSteps, stampCovered } from "@/lib/questions";
 import { useApp } from "@/lib/store";
 import { CHORE_TEMPLATES, HABIT_SUGGESTIONS, PACE_OPTIONS, PET_CARES, PET_TYPES, WORK_AREAS } from "@/lib/templates";
 import type { OnboardingAnswers, Pace } from "@/lib/types";
 import { Button, useCalm } from "../ui";
 
 export function OnboardingScreen({ mode }: { mode: "create" | "edit" }) {
-  const { data, clock, finishOnboarding } = useApp();
+  const { data, clock, finishOnboarding, pendingJoin } = useApp();
+  const joining = mode === "create" && Boolean(pendingJoin);
   const router = useRouter();
   const calm = useCalm();
   const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState<OnboardingAnswers>(data.profile?.onboarding ?? defaultAnswers());
+  const [answers, setAnswers] = useState<OnboardingAnswers>(() => {
+    if (joining && pendingJoin?.answers) return { ...defaultAnswers(), ...stampCovered(pendingJoin.answers), name: data.profile?.name || pendingJoin.answers.name };
+    const saved = data.profile?.onboarding;
+    return { ...defaultAnswers(), ...saved, answeredSteps: saved?.answeredSteps ?? [] };
+  });
   const [error, setError] = useState("");
   const anchor = clock.minutes < toMinutes(answers.availabilityEnd) - 15 ? clock.today : addDays(clock.today, 1);
   const plan = useMemo(() => buildPlan(answers, anchor), [answers, anchor]);
@@ -27,30 +33,40 @@ export function OnboardingScreen({ mode }: { mode: "create" | "edit" }) {
     setAnswers((current) => ({ ...current, ...partial }));
   }
 
-  const steps = [
-    <NameStep key="name" name={answers.name} onChange={(name) => patch({ name })} />,
-    <TimeStep key="rhythm" title="Sleep" a={answers.wake} b={answers.sleep} aLabel="Wake" bLabel="Sleep" onA={(wake) => patch({ wake })} onB={(sleep) => patch({ sleep })} />,
-    <AvailabilityStep key="hours" answers={answers} onChange={patch} />,
-    <ChoreStep key="chores" title="Chores" paces={answers.chores} onChange={(chores) => patch({ chores })} />,
-    <StartStep key="start" chores={answers.chores} starting={answers.starting} onChange={(starting) => patch({ starting })} />,
-    <PetStep key="pets" pets={answers.pets} onChange={(pets) => patch({ pets })} />,
-    <HabitStep key="habits" habits={answers.habits} onChange={(habits) => patch({ habits })} />,
-    <WorkStep key="work" answers={answers} onChange={patch} />,
-    <GoalStep key="goals" goals={answers.goals} onChange={(goals) => patch({ goals })} />,
-    <PreferenceStep key="prefs" answers={answers} onChange={patch} />,
-    <ReviewStep key="review" plan={plan} tasksOn={tasksOn} petsOn={petsOn} projectsOn={projectsOn} setTasksOn={setTasksOn} setPetsOn={setPetsOn} setProjectsOn={setProjectsOn} />,
+  const gaps = joining && pendingJoin?.answers ? new Set<string>(openSteps(pendingJoin.answers)) : null;
+  const openChores = joining && pendingJoin?.answers ? openChoreIds(pendingJoin.answers) : null;
+  const kept = new Set(data.tasks.map((task) => task.planKey).filter((key): key is string => Boolean(key)));
+  const catalog = [
+    { id: "name", node: <NameStep name={answers.name} onChange={(name) => patch({ name })} /> },
+    { id: "rhythm", node: <TimeStep title="Sleep" a={answers.wake} b={answers.sleep} aLabel="Wake" bLabel="Sleep" onA={(wake) => patch({ wake })} onB={(sleep) => patch({ sleep })} /> },
+    { id: "hours", node: <AvailabilityStep answers={answers} onChange={patch} /> },
+    { id: "chores", node: <ChoreStep title={joining ? "Add a chore" : "Chores"} paces={answers.chores} onChange={(chores) => patch({ chores })} only={openChores ?? undefined} /> },
+    { id: "start", node: <StartStep chores={answers.chores} starting={answers.starting} onChange={(starting) => patch({ starting })} /> },
+    { id: "pets", node: <PetStep pets={answers.pets} onChange={(pets) => patch({ pets })} /> },
+    { id: "habits", node: <HabitStep habits={answers.habits} onChange={(habits) => patch({ habits })} /> },
+    { id: "work", node: <WorkStep answers={answers} onChange={patch} /> },
+    { id: "goals", node: <GoalStep goals={answers.goals} onChange={(goals) => patch({ goals })} /> },
+    { id: "prefs", node: <PreferenceStep answers={answers} onChange={patch} /> },
+    { id: "review", node: <ReviewStep plan={plan} tasksOn={tasksOn} petsOn={petsOn} projectsOn={projectsOn} setTasksOn={setTasksOn} setPetsOn={setPetsOn} setProjectsOn={setProjectsOn} hideKeys={joining ? kept : undefined} /> },
   ];
+  const steps = catalog.filter((item) => item.id === "review" || !gaps || gaps.has(item.id));
+  const current = steps[Math.min(step, steps.length - 1)];
 
   function next() {
-    if (step === 2 && toMinutes(answers.availabilityEnd) <= toMinutes(answers.availabilityStart)) {
+    if (!current) return;
+    if (current.id === "hours" && toMinutes(answers.availabilityEnd) <= toMinutes(answers.availabilityStart)) {
       setError("The end has to be later.");
       return;
     }
     setError("");
+    const withStep = current.id === "review"
+      ? answers
+      : { ...answers, answeredSteps: [...new Set([...(answers.answeredSteps ?? []), current.id])] };
+    setAnswers(withStep);
     if (step < steps.length - 1) setStep(step + 1);
     else {
       const ok = finishOnboarding(
-        answers,
+        withStep,
         plan.tasks.filter((task) => tasksOn[task.key] !== false).map((task) => task.key),
         plan.pets.filter((pet) => petsOn[pet.key] !== false).map((pet) => pet.key),
         plan.projects.filter((project) => projectsOn[project.key] !== false).map((project) => project.key),
@@ -63,17 +79,18 @@ export function OnboardingScreen({ mode }: { mode: "create" | "edit" }) {
     <div className="flex min-h-[calc(100dvh-1.5rem)] flex-col">
       <div className="mb-6 flex items-center justify-between text-sm text-muted">
         <span className="serif text-2xl text-ink">Hearth</span>
-        <span>{step + 1} / {steps.length}</span>
+        <span>{Math.min(step, Math.max(steps.length - 1, 0)) + 1} / {steps.length}</span>
       </div>
       <div className="mb-6 h-1 overflow-hidden rounded-full bg-line">
-        <div className="h-full bg-accent" style={{ width: `${((step + 1) / steps.length) * 100}%` }} />
+        <div className="h-full bg-accent" style={{ width: `${((Math.min(step, Math.max(steps.length - 1, 0)) + 1) / Math.max(steps.length, 1)) * 100}%` }} />
       </div>
+      {gaps ? <p className="mb-4 text-sm text-muted">They already answered the rest. Add any of these if you want.</p> : null}
       {calm ? (
-        <div className="flex-1 pb-6">{steps[step]}</div>
+        <div className="flex-1 pb-6">{current?.node}</div>
       ) : (
         <AnimatePresence mode="wait">
-          <motion.div key={step} className="flex-1 pb-6" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
-            {steps[step]}
+          <motion.div key={current?.id ?? step} className="flex-1 pb-6" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
+            {current?.node}
           </motion.div>
         </AnimatePresence>
       )}
@@ -123,12 +140,13 @@ function AvailabilityStep({ answers, onChange }: { answers: OnboardingAnswers; o
   );
 }
 
-function ChoreStep({ title, paces, onChange }: { title: string; paces: Record<string, Pace>; onChange: (paces: Record<string, Pace>) => void }) {
+function ChoreStep({ title, paces, onChange, only }: { title: string; paces: Record<string, Pace>; onChange: (paces: Record<string, Pace>) => void; only?: string[] }) {
+  const chores = only ? CHORE_TEMPLATES.filter((chore) => only.includes(chore.id)) : CHORE_TEMPLATES;
   return (
     <div>
       <h2 className="serif text-3xl leading-tight sm:text-4xl">{title}</h2>
       <ul className="mt-4 space-y-3">
-        {CHORE_TEMPLATES.map((chore) => (
+        {chores.map((chore) => (
           <li key={chore.id} className="card p-3">
             <p>{chore.title}</p>
             <div className="mt-2 flex gap-1 overflow-x-auto">
@@ -266,18 +284,22 @@ function PreferenceStep({ answers, onChange }: { answers: OnboardingAnswers; onC
   );
 }
 
-function ReviewStep({ plan, tasksOn, petsOn, projectsOn, setTasksOn, setPetsOn, setProjectsOn }: { plan: ReturnType<typeof buildPlan>; tasksOn: Record<string, boolean>; petsOn: Record<string, boolean>; projectsOn: Record<string, boolean>; setTasksOn: (value: Record<string, boolean>) => void; setPetsOn: (value: Record<string, boolean>) => void; setProjectsOn: (value: Record<string, boolean>) => void }) {
+function ReviewStep({ plan, tasksOn, petsOn, projectsOn, setTasksOn, setPetsOn, setProjectsOn, hideKeys }: { plan: ReturnType<typeof buildPlan>; tasksOn: Record<string, boolean>; petsOn: Record<string, boolean>; projectsOn: Record<string, boolean>; setTasksOn: (value: Record<string, boolean>) => void; setPetsOn: (value: Record<string, boolean>) => void; setProjectsOn: (value: Record<string, boolean>) => void; hideKeys?: Set<string> }) {
+  const pets = plan.pets.filter((pet) => !hideKeys?.has(pet.key));
+  const projects = plan.projects.filter((project) => !hideKeys?.has(project.key));
+  const tasks = plan.tasks.filter((task) => !hideKeys?.has(task.key));
   return (
     <div>
       <h2 className="serif text-3xl leading-tight sm:text-4xl">Start with</h2>
+      {pets.length + projects.length + tasks.length === 0 ? <p className="mt-4 text-sm text-muted">Nothing new to add.</p> : null}
       <ul className="mt-4 space-y-2">
-        {plan.pets.map((pet) => (
+        {pets.map((pet) => (
           <li key={pet.key}><label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" checked={petsOn[pet.key] !== false} onChange={(event) => setPetsOn({ ...petsOn, [pet.key]: event.target.checked })} />Pet · {pet.name}</label></li>
         ))}
-        {plan.projects.map((project) => (
+        {projects.map((project) => (
           <li key={project.key}><label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" checked={projectsOn[project.key] !== false} onChange={(event) => setProjectsOn({ ...projectsOn, [project.key]: event.target.checked })} />Project · {project.name}</label></li>
         ))}
-        {plan.tasks.map((task) => (
+        {tasks.map((task) => (
           <li key={task.key}><label className="flex min-h-11 items-start gap-3 py-2 text-sm"><input className="mt-1 shrink-0" type="checkbox" checked={tasksOn[task.key] !== false} onChange={(event) => setTasksOn({ ...tasksOn, [task.key]: event.target.checked })} /><span className="min-w-0">{task.title} <span className="text-muted">{task.detail}</span></span></label></li>
         ))}
       </ul>

@@ -29,7 +29,7 @@ const MORE = [
 export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { ready, error, data } = useApp();
+  const { ready, error, data, accountName, pendingJoin } = useApp();
   const [lifeOpen, setLifeOpen] = useState(false);
   const onboarding = pathname === "/onboarding" || pathname === "/onboarding/edit";
   const here = MORE.find((item) => item.href === pathname);
@@ -43,9 +43,17 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!ready) return;
-    if (!data.profile?.onboarded && !onboarding) router.replace("/onboarding");
-    if (data.profile?.onboarded && pathname === "/onboarding") router.replace("/");
-  }, [ready, data.profile?.onboarded, onboarding, pathname, router]);
+    if (!data.profile?.onboarded) {
+      if (onboarding) return;
+      if (accountName || pendingJoin) {
+        if (pathname !== "/onboarding") router.replace("/onboarding");
+        return;
+      }
+      if (pathname !== "/login") router.replace("/login");
+      return;
+    }
+    if (pathname === "/onboarding" || pathname === "/login") router.replace("/");
+  }, [ready, data.profile?.onboarded, onboarding, pathname, router, accountName, pendingJoin]);
 
   useEffect(() => {
     if (process.env.NODE_ENV === "test") return;
@@ -53,8 +61,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
     navigator.serviceWorker.register("/sw.js").catch(() => undefined);
   }, []);
 
-  const waiting = !ready || Boolean(ready && !data.profile?.onboarded && !onboarding) || Boolean(data.profile?.onboarded && pathname === "/onboarding");
-  const frame = onboarding ? (
+  const waiting = !ready
+    || Boolean(ready && !data.profile?.onboarded && !onboarding && pathname !== "/login")
+    || Boolean(ready && !data.profile?.onboarded && (accountName || pendingJoin) && pathname === "/login")
+    || Boolean(data.profile?.onboarded && (pathname === "/onboarding" || pathname === "/login"));
+  const frame = onboarding || pathname === "/login" ? (
     <main className="mx-auto min-h-dvh w-full max-w-lg px-4 pt-[max(1.5rem,env(safe-area-inset-top))]">{children}</main>
   ) : (
     <div className="mx-auto flex min-h-dvh w-full max-w-6xl">

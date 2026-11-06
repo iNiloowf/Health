@@ -1,6 +1,6 @@
 import { connection } from "next/server";
 import { createHome, joinHome, leaveHome, pushHome, readHome } from "@/lib/home-file";
-import type { Occurrence, Task } from "@/lib/types";
+import type { ActivityEntry, Occurrence, OnboardingAnswers, Task } from "@/lib/types";
 
 function fail(message: string, status = 400) {
   return Response.json({ error: message }, { status });
@@ -24,6 +24,8 @@ export async function POST(request: Request) {
     tasks?: Task[];
     occurrences?: Occurrence[];
     droppedTaskIds?: string[];
+    onboarding?: OnboardingAnswers | null;
+    activity?: ActivityEntry[];
   };
   try {
     if (body.action === "create") {
@@ -33,6 +35,8 @@ export async function POST(request: Request) {
         memberId: body.memberId,
         tasks: body.tasks ?? [],
         occurrences: body.occurrences ?? [],
+        onboarding: body.onboarding ?? null,
+        activity: body.activity ?? [],
       }));
     }
     if (body.action === "join") {
@@ -48,6 +52,8 @@ export async function POST(request: Request) {
         tasks: body.tasks ?? [],
         occurrences: body.occurrences ?? [],
         droppedTaskIds: body.droppedTaskIds ?? [],
+        onboarding: body.onboarding ?? null,
+        activity: body.activity ?? [],
       }));
     }
     if (body.action === "leave") {

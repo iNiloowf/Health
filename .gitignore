@@ -44,3 +44,6 @@ next-env.d.ts
 
 # shared homes created on this machine
 /data
+
+.vercel
+.env*

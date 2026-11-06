@@ -33,6 +33,7 @@ create table if not exists public.profiles (
   early_organizer boolean not null default false,
   planner_accepted text[] not null default '{}',
   fired_reminders text[] not null default '{}',
+  activity jsonb not null default '[]',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -110,6 +111,7 @@ create table if not exists public.occurrences (
   status text not null,
   completed_at timestamptz,
   completed_late boolean not null default false,
+  done_by text,
   skipped_at timestamptz,
   rescheduled_from date,
   snoozed_until timestamptz,
@@ -280,3 +282,6 @@ create policy "own achievements" on public.user_achievements for all using (auth
 create policy "own notifications" on public.notifications for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "read levels" on public.levels for select using (true);
 create policy "read achievement catalog" on public.achievements for select using (true);
+
+alter table public.profiles add column if not exists activity jsonb not null default '[]';
+alter table public.occurrences add column if not exists done_by text;

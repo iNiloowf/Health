@@ -1,10 +1,12 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { loginAccount, logoutAccount, registerAccount, saveAccount, sessionAccount } from "./account-client";
 import { mergeData, pullAll, pushAll } from "./cloud";
 import { loadState, saveState } from "./db";
 import { clockFrom, localTimeZone } from "./dates";
 import { uid } from "./model";
+import { openSteps, stampCovered } from "./questions";
 import { applyShared, householdOccurrences, householdSignature, householdTasks } from "./share";
 import { createSharedHome, joinSharedHome, leaveSharedHome, pullHome, pushSharedHome } from "./share-client";
 import {
@@ -21,8 +23,10 @@ import {
   deleteProject,
   deleteTask,
   freshData,
+  hydrate,
   importData,
   reconcile,
+  seedProfile,
   rescheduleOccurrence,
   setOccurrenceNote,
   setTaskActive,
@@ -86,7 +90,7 @@ interface AppApi {
   removeProject: (id: string) => void;
   preferTime: (taskId: string, time: string) => void;
   openShare: () => Promise<void>;
-  joinShare: (code: string, name: string) => Promise<void>;
+  joinShare: (code: string, name: string) => Promise<"ready" | "questions">;
   leaveShare: () => Promise<void>;
   exportBackup: () => void;
   importBackup: (text: string) => void;
@@ -94,6 +98,31 @@ interface AppApi {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<string>;
   signOut: () => Promise<void>;
+  accountName: string | null;
+  pendingJoin: { code: string; answers: OnboardingAnswers | null } | null;
+  createAccount: (name: string, password: string) => Promise<void>;
+  enterAccount: (name: string, password: string) => Promise<void>;
+  leaveAccount: () => Promise<void>;
+}
+
+const TOKEN_KEY = "hearth-token";
+
+function readToken(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function resumeJoin(data: AppData): { code: string; answers: OnboardingAnswers | null } | null {
+  const profile = data.profile;
+  if (!profile || profile.onboarded || !profile.share) return null;
+  if (!profile.onboarding) return { code: profile.share.code, answers: null };
+  const answers = stampCovered({ ...profile.onboarding, name: profile.name || profile.onboarding.name });
+  if (!openSteps(answers).length) return null;
+  return { code: profile.share.code, answers };
 }
 
 const AppContext = createContext<AppApi | null>(null);
@@ -107,7 +136,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [clock, setClock] = useState<Clock>(idleClock);
   const [canUndo, setCanUndo] = useState(false);
   const [cloud, setCloud] = useState<CloudState>({ configured: supabaseConfigured(), email: null, syncing: false, error: null });
+  const [accountName, setAccountName] = useState<string | null>(null);
+  const [pendingJoin, setPendingJoin] = useState<{ code: string; answers: OnboardingAnswers | null } | null>(null);
   const dataRef = useRef(data);
+  const tokenRef = useRef<string | null>(null);
+  const pendingJoinRef = useRef(pendingJoin);
+  pendingJoinRef.current = pendingJoin;
   const undoRef = useRef<AppData | null>(null);
   const queue = useRef(Promise.resolve());
   const knownRemote = useRef<Set<string>>(new Set());
@@ -178,9 +212,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }
 
   function persist(next: AppData) {
+    const token = tokenRef.current;
     queue.current = queue.current
       .then(async () => {
         await saveState(next);
+        if (token) await saveAccount(token, next);
         const sb = getSupabase();
         if (!sb) return;
         const { data: session } = await sb.auth.getSession();
@@ -229,13 +265,38 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     let cancel = false;
     (async () => {
       try {
-        const loaded = (await loadState()) ?? freshData();
-        if (loaded.profile && loaded.profile.showXp === undefined) loaded.profile.showXp = true;
+        const loaded = hydrate((await loadState()) ?? freshData());
         const now = clockFrom(new Date(), loaded.profile?.timezone || localTimeZone());
-        const next = loaded.profile?.onboarded ? reconcile(loaded, now) : loaded;
+        let next = loaded.profile?.onboarded ? reconcile(loaded, now) : loaded;
+        const token = readToken();
+        tokenRef.current = token;
+        if (token) {
+          try {
+            const session = await sessionAccount(token);
+            if (cancel) return;
+            setAccountName(session.name);
+            const merged = mergeData(hydrate(next), hydrate(session.data));
+            const clock = clockFrom(new Date(), merged.profile?.timezone || localTimeZone());
+            next = merged.profile?.onboarded ? reconcile(merged, clock) : merged;
+          } catch {
+            tokenRef.current = null;
+            try {
+              window.localStorage.removeItem(TOKEN_KEY);
+            } catch {
+              /* the device can keep working locally */
+            }
+          }
+        }
+        const resume = resumeJoin(next);
+        if (resume) {
+          pendingJoinRef.current = resume;
+          setPendingJoin(resume);
+        } else if (next.profile && !next.profile.onboarded && next.profile.share && next.profile.onboarding && !openSteps(stampCovered(next.profile.onboarding)).length) {
+          next = reconcile({ ...next, profile: { ...next.profile, onboarded: true } }, clockFrom(new Date(), next.profile.timezone));
+        }
         if (cancel) return;
         dataRef.current = next;
-        setClock(now);
+        setClock(clockFrom(new Date(), next.profile?.timezone || localTimeZone()));
         setData(next);
         if (JSON.stringify(next) !== JSON.stringify(loaded)) await saveState(next);
         const sb = getSupabase();
@@ -310,6 +371,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       toast,
       canUndo,
       cloud,
+      accountName,
+      pendingJoin,
       dismissCelebration: (id) => setCelebrations((current) => current.filter((item) => item.id !== id)),
       clearToast: () => setToast(null),
       undo: () => {
@@ -322,8 +385,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setToast("Undone");
         persist(dataRef.current);
       },
-      finishOnboarding: (answers, taskKeys, petKeys, projectKeys) =>
-        commit((current) => applyOnboarding(current, answers, taskKeys, petKeys, projectKeys, clockFrom(new Date(), current.profile?.timezone || localTimeZone())), { message: "Your evening is ready" }),
+      finishOnboarding: (answers, taskKeys, petKeys, projectKeys) => {
+        const keepExisting = Boolean(pendingJoinRef.current);
+        const ok = commit(
+          (current) => applyOnboarding(current, answers, taskKeys, petKeys, projectKeys, clockFrom(new Date(), current.profile?.timezone || localTimeZone()), { keepExisting }),
+          { message: "Your evening is ready" },
+        );
+        if (ok) {
+          pendingJoinRef.current = null;
+          setPendingJoin(null);
+        }
+        return ok;
+      },
       saveProfile: (patch) => commit((current) => updateProfile(current, patch, clockFrom(new Date(), current.profile?.timezone || localTimeZone())), { message: "Saved" }),
       saveTask: (input, id) =>
         commit((current) => (id ? updateTask(current, id, input, currentClock) : createTask(current, input, currentClock)), { message: id ? "Task updated" : "Task added" }),
@@ -362,15 +435,58 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setToast("Ready");
       },
       joinShare: async (code, name) => {
-        if (!dataRef.current.profile?.onboarded) throw new Error("Finish the introduction first.");
-        const memberId = uid();
-        const trimmed = name.trim() || dataRef.current.profile.name || "Me";
-        if (trimmed !== dataRef.current.profile.name) {
-          dataRef.current = updateProfile(dataRef.current, { name: trimmed }, clockFrom(new Date(), dataRef.current.profile.timezone));
+        const trimmed = name.trim() || dataRef.current.profile?.name || "Me";
+        const cleaned = code.trim().toLowerCase().replace(/\s+/g, "");
+        if (!cleaned) throw new Error("Enter the code.");
+        const memberId = dataRef.current.profile?.share?.code === cleaned ? dataRef.current.profile.share.memberId : uid();
+        const home = await joinSharedHome(cleaned, trimmed, memberId);
+        const clock = clockFrom(new Date(), dataRef.current.profile?.timezone || localTimeZone());
+        let current = dataRef.current.profile ? dataRef.current : seedProfile(dataRef.current, trimmed, clock);
+        if (current.profile && current.profile.name !== trimmed && !current.profile.onboarded) {
+          current = { ...current, profile: { ...current.profile, name: trimmed } };
         }
-        const home = await joinSharedHome(code, trimmed, memberId);
-        adoptHome(home, memberId);
-        setToast("Joined");
+        if (current.profile?.onboarded && current.profile.name !== trimmed && trimmed) {
+          current = updateProfile(current, { name: trimmed }, clock);
+        }
+        let next = applyShared(current, home, memberId);
+        const partner = home.onboarding ? stampCovered({ ...home.onboarding, name: trimmed }) : null;
+        const needsQuestions = !next.profile?.onboarded && (!partner || openSteps(partner).length > 0);
+        if (!needsQuestions && next.profile?.onboarded) next = reconcile(next, clock);
+        if (!needsQuestions && next.profile && !next.profile.onboarded) {
+          const answers = partner ?? next.profile.onboarding;
+          next = reconcile({
+            ...next,
+            profile: {
+              ...next.profile,
+              onboarded: true,
+              name: trimmed,
+              onboarding: answers,
+              wake: answers?.wake ?? next.profile.wake,
+              sleep: answers?.sleep ?? next.profile.sleep,
+              availabilityStart: answers?.availabilityStart ?? next.profile.availabilityStart,
+              availabilityEnd: answers?.availabilityEnd ?? next.profile.availabilityEnd,
+              weekStartsOn: answers?.weekStartsOn ?? next.profile.weekStartsOn,
+              workStart: answers?.workStart ?? next.profile.workStart,
+              workEnd: answers?.workEnd ?? next.profile.workEnd,
+              reminderStyle: answers?.reminderStyle ?? next.profile.reminderStyle,
+              weeklyWorkload: answers?.weeklyWorkload ?? next.profile.weeklyWorkload,
+              animation: answers?.animation ?? next.profile.animation,
+            },
+          }, clock);
+        }
+        if (needsQuestions && partner && next.profile) {
+          next = { ...next, profile: { ...next.profile, onboarded: false, name: trimmed, onboarding: partner } };
+        }
+        const pending = needsQuestions ? { code: home.code, answers: partner } : null;
+        pendingJoinRef.current = pending;
+        setPendingJoin(pending);
+        dataRef.current = next;
+        setData(next);
+        setClock(clock);
+        persist(next);
+        rememberHome(home.tasks);
+        setToast(needsQuestions && partner ? "Add anything they left open" : "Joined");
+        return needsQuestions ? "questions" : "ready";
       },
       leaveShare: async () => {
         const share = dataRef.current.profile?.share;
@@ -451,10 +567,54 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setCloud((current) => ({ ...current, email: null }));
         setToast("Signed out on this device");
       },
+      createAccount: async (name, password) => {
+        const result = await registerAccount({ name, password, data: dataRef.current });
+        tokenRef.current = result.token;
+        window.localStorage.setItem(TOKEN_KEY, result.token);
+        setAccountName(result.name);
+        setToast("Account ready");
+      },
+      enterAccount: async (name, password) => {
+        const result = await loginAccount({ name, password });
+        tokenRef.current = result.token;
+        window.localStorage.setItem(TOKEN_KEY, result.token);
+        const merged = mergeData(hydrate(dataRef.current), hydrate(result.data));
+        const now = clockFrom(new Date(), merged.profile?.timezone || localTimeZone());
+        const next = merged.profile?.onboarded ? reconcile(merged, now) : merged;
+        const resume = resumeJoin(next);
+        pendingJoinRef.current = resume;
+        setPendingJoin(resume);
+        dataRef.current = next;
+        setData(next);
+        setClock(now);
+        setAccountName(result.name);
+        await saveState(next);
+        setToast("Signed in");
+      },
+      leaveAccount: async () => {
+        const token = tokenRef.current;
+        tokenRef.current = null;
+        try {
+          window.localStorage.removeItem(TOKEN_KEY);
+        } catch {
+          /* signing out still clears this device */
+        }
+        const next = freshData();
+        pendingJoinRef.current = null;
+        setPendingJoin(null);
+        dataRef.current = next;
+        setData(next);
+        setAccountName(null);
+        queue.current = queue.current.then(async () => {
+          await saveState(next);
+          if (token) await logoutAccount(token).catch(() => undefined);
+        });
+        setToast("Signed out on this device");
+      },
     };
     // The API closes over the latest screen state. Actions read dataRef at call time.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, error, data, clock, celebrations, toast, canUndo, cloud]);
+  }, [ready, error, data, clock, celebrations, toast, canUndo, cloud, accountName, pendingJoin]);
 
   return <AppContext.Provider value={api}>{children}</AppContext.Provider>;
 }

@@ -15,7 +15,8 @@ import {
 import { matchesRecurrence, taskStreak } from "../lib/model";
 import { levelFor } from "../lib/progress";
 import { inQuietHours } from "../lib/reminders";
-import { pickOccurrence } from "../lib/share";
+import { openSteps } from "../lib/questions";
+import { mergeOnboarding, pickOccurrence } from "../lib/share";
 import type { AppData, TaskInput } from "../lib/types";
 
 let failed = 0;
@@ -78,6 +79,8 @@ data = completeOccurrence(data, daily!.id, evening);
 data = completeOccurrence(data, daily!.id, evening);
 assert(data.xp.length === xpBefore + 1, "completion awards XP once");
 assert(data.occurrences.find((item) => item.id === daily!.id)?.status === "completed", "occurrence is completed");
+assert(data.occurrences.find((item) => item.id === daily!.id)?.doneBy === "Niloofar", "completion records who did it");
+assert(data.activity.length === 1 && data.activity[0]?.name === "Niloofar" && data.activity[0]?.title === "Empty dishwasher", "completion is logged with the person and the task");
 
 const input: TaskInput = {
   title: "Write listing",
@@ -179,6 +182,13 @@ const pendingShare = data.occurrences.find((item) => item.status === "pending")!
 const checked = { ...pendingShare, status: "completed" as const, doneBy: "Niloofar", updatedAt: "2026-11-05T18:00:00.000Z" };
 const kept = pickOccurrence({ ...pendingShare, updatedAt: "2026-11-05T19:00:00.000Z" }, checked);
 assert(kept.status === "completed" && kept.doneBy === "Niloofar", "a newer pending update does not undo a check");
+
+const answered = { ...answers, answeredSteps: ["name", "rhythm", "hours", "chores", "start", "prefs"] };
+assert(openSteps(answered).includes("chores") && openSteps(answered).includes("pets") && !openSteps(answered).includes("rhythm"), "a partner is asked only what was left blank");
+const everyChore = { ...answered, chores: Object.fromEntries(Object.keys(answered.chores).map((id) => [id, "weekly" as const])), starting: {} };
+assert(!openSteps(everyChore).includes("chores"), "chores that already have an answer are not asked again");
+const filled = mergeOnboarding(answered, { ...answered, chores: { ...answered.chores, plants: "weekly" }, answeredSteps: [...answered.answeredSteps, "chores"] });
+assert(filled?.chores.plants === "weekly" && filled.chores.laundry === "weekly", "a partner can add a skipped chore without changing one already chosen");
 
 if (failed) {
   console.error(`${failed} checks failed`);

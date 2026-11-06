@@ -1,9 +1,6 @@
-import { mkdir, readFile, writeFile, rm } from "node:fs/promises";
-import path from "node:path";
-import type { Occurrence, Task } from "./types";
-import { mergeById, pickOccurrence, pickTask, type SharedHome, type ShareMember } from "./share";
-
-const DIRECTORY = path.join(process.cwd(), "data", "homes");
+import { readDoc, removeDoc, writeDoc } from "./doc-store";
+import type { ActivityEntry, Occurrence, OnboardingAnswers, Task } from "./types";
+import { mergeActivity, mergeById, mergeOnboarding, pickOccurrence, pickTask, type SharedHome, type ShareMember } from "./share";
 const WORDS = ["peach", "blush", "lily", "rose", "honey", "pearl", "daisy", "coco", "petal", "sugar", "cherry", "bunny"];
 
 let chain: Promise<unknown> = Promise.resolve();
@@ -18,45 +15,64 @@ function cleanCode(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, "");
 }
 
-async function load(code: string): Promise<SharedHome | null> {
-  try {
-    const text = await readFile(path.join(DIRECTORY, `${code}.json`), "utf8");
-    const home = JSON.parse(text) as SharedHome;
-    home.removedTaskIds ??= [];
-    home.members ??= [];
-    home.tasks ??= [];
-    home.occurrences ??= [];
-    return home;
-  } catch {
-    return null;
-  }
+function homeKey(code: string): string {
+  return `homes/${code}.json`;
 }
 
-async function save(home: SharedHome): Promise<SharedHome> {
-  await mkdir(DIRECTORY, { recursive: true });
-  await writeFile(path.join(DIRECTORY, `${home.code}.json`), JSON.stringify(home), "utf8");
+async function load(code: string): Promise<{ home: SharedHome; etag: string | null } | null> {
+  const doc = await readDoc<SharedHome>(homeKey(code));
+  if (!doc) return null;
+  const home = doc.value;
+  home.removedTaskIds ??= [];
+  home.members ??= [];
+  home.tasks ??= [];
+  home.occurrences ??= [];
+  home.onboarding ??= null;
+  home.activity ??= [];
+  return { home, etag: doc.etag };
+}
+
+async function save(home: SharedHome, etag: string | null): Promise<SharedHome> {
+  const saved = await writeDoc(homeKey(home.code), home, etag);
+  if (!saved) throw new Error("This home changed while saving. Try again.");
   return home;
 }
 
-function stamp(home: SharedHome, tasks: Task[], occurrences: Occurrence[], members: ShareMember[], removed: string[]): SharedHome {
-  const next = { ...home, tasks, occurrences, members, removedTaskIds: removed, updatedAt: new Date().toISOString() };
-  const changed = JSON.stringify({ tasks, occurrences, members, removed }) !== JSON.stringify({
+function stamp(
+  home: SharedHome,
+  tasks: Task[],
+  occurrences: Occurrence[],
+  members: ShareMember[],
+  removed: string[],
+  onboarding: OnboardingAnswers | null,
+  activity: ActivityEntry[],
+): SharedHome {
+  const next = { ...home, tasks, occurrences, members, removedTaskIds: removed, onboarding, activity, updatedAt: new Date().toISOString() };
+  const changed = JSON.stringify({ tasks, occurrences, members, removed, onboarding, activity }) !== JSON.stringify({
     tasks: home.tasks,
     occurrences: home.occurrences,
     members: home.members,
     removed: home.removedTaskIds,
+    onboarding: home.onboarding ?? null,
+    activity: home.activity ?? [],
   });
   if (changed) next.revision += 1;
   return next;
 }
 
 export function readHome(code: string): Promise<SharedHome | null> {
-  return lock(() => load(cleanCode(code)));
+  return lock(async () => (await load(cleanCode(code)))?.home ?? null);
 }
 
-export function createHome(input: { name: string; memberId: string; tasks: Task[]; occurrences: Occurrence[] }): Promise<SharedHome> {
+export function createHome(input: {
+  name: string;
+  memberId: string;
+  tasks: Task[];
+  occurrences: Occurrence[];
+  onboarding?: OnboardingAnswers | null;
+  activity?: ActivityEntry[];
+}): Promise<SharedHome> {
   return lock(async () => {
-    await mkdir(DIRECTORY, { recursive: true });
     let code = "";
     for (let attempt = 0; attempt < 20; attempt += 1) {
       const word = WORDS[Math.floor(Math.random() * WORDS.length)];
@@ -74,19 +90,22 @@ export function createHome(input: { name: string; memberId: string; tasks: Task[
       tasks,
       occurrences: input.occurrences.filter((item) => ids.has(item.taskId)),
       removedTaskIds: [],
-    });
+      onboarding: input.onboarding ?? null,
+      activity: input.activity ?? [],
+    }, null);
   });
 }
 
 export function joinHome(input: { code: string; name: string; memberId: string }): Promise<SharedHome> {
   return lock(async () => {
-    const home = await load(cleanCode(input.code));
-    if (!home) throw new Error("No home with that code.");
+    const loaded = await load(cleanCode(input.code));
+    if (!loaded) throw new Error("No home with that code.");
+    const { home } = loaded;
     const name = input.name.trim() || "Me";
     const members = home.members.some((member) => member.id === input.memberId)
       ? home.members.map((member) => (member.id === input.memberId ? { ...member, name } : member))
       : [...home.members, { id: input.memberId, name, joinedAt: new Date().toISOString() }];
-    return save(stamp(home, home.tasks, home.occurrences, members, home.removedTaskIds));
+    return save(stamp(home, home.tasks, home.occurrences, members, home.removedTaskIds, home.onboarding ?? null, home.activity ?? []), loaded.etag);
   });
 }
 
@@ -97,10 +116,13 @@ export function pushHome(input: {
   tasks: Task[];
   occurrences: Occurrence[];
   droppedTaskIds: string[];
+  onboarding?: OnboardingAnswers | null;
+  activity?: ActivityEntry[];
 }): Promise<SharedHome> {
   return lock(async () => {
-    const home = await load(cleanCode(input.code));
-    if (!home) throw new Error("This home is no longer here.");
+    const loaded = await load(cleanCode(input.code));
+    if (!loaded) throw new Error("This home is no longer here.");
+    const { home } = loaded;
     if (!home.members.some((member) => member.id === input.memberId)) throw new Error("Join this home first.");
     const removed = [...new Set([...home.removedTaskIds, ...input.droppedTaskIds.filter(Boolean)])];
     const removedSet = new Set(removed);
@@ -114,20 +136,23 @@ export function pushHome(input: {
       pickOccurrence,
     );
     const members = home.members.map((member) => (member.id === input.memberId ? { ...member, name: input.name.trim() || member.name } : member));
-    return save(stamp(home, tasks, occurrences, members, removed));
+    const onboarding = mergeOnboarding(home.onboarding ?? null, input.onboarding ?? null);
+    const activity = mergeActivity(home.activity ?? [], input.activity ?? []);
+    return save(stamp(home, tasks, occurrences, members, removed, onboarding, activity), loaded.etag);
   });
 }
 
 export function leaveHome(input: { code: string; memberId: string }): Promise<void> {
   return lock(async () => {
     const code = cleanCode(input.code);
-    const home = await load(code);
-    if (!home) return;
+    const loaded = await load(code);
+    if (!loaded) return;
+    const { home } = loaded;
     const members = home.members.filter((member) => member.id !== input.memberId);
     if (!members.length) {
-      await rm(path.join(DIRECTORY, `${code}.json`), { force: true });
+      await removeDoc(homeKey(code));
       return;
     }
-    await save(stamp(home, home.tasks, home.occurrences, members, home.removedTaskIds));
+    await save(stamp(home, home.tasks, home.occurrences, members, home.removedTaskIds, home.onboarding ?? null, home.activity ?? []), loaded.etag);
   });
 }

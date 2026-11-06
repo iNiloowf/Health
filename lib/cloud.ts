@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { freshData } from "./engine";
+import { mergeActivity } from "./share";
 import type { AppData, Category, Occurrence, Pet, PetSchedule, Profile, Project, Subtask, Task, XpTxn } from "./types";
 
 type Row = Record<string, unknown>;
@@ -58,16 +59,18 @@ function profileRow(userId: string, profile: Profile, data: AppData): Row {
     early_organizer: data.earlyOrganizer,
     planner_accepted: data.plannerAccepted,
     fired_reminders: data.firedReminders,
+    activity: data.activity ?? [],
     created_at: profile.createdAt,
     updated_at: profile.updatedAt,
   };
 }
 
-function profileFrom(row: Row, fallback: Profile["id"]): { profile: Profile; earlyOrganizer: boolean; plannerAccepted: string[]; firedReminders: string[] } {
+function profileFrom(row: Row, fallback: Profile["id"]): { profile: Profile; earlyOrganizer: boolean; plannerAccepted: string[]; firedReminders: string[]; activity: AppData["activity"] } {
   return {
     earlyOrganizer: Boolean(row.early_organizer),
     plannerAccepted: (row.planner_accepted as string[]) ?? [],
     firedReminders: (row.fired_reminders as string[]) ?? [],
+    activity: Array.isArray(row.activity) ? (row.activity as AppData["activity"]) : [],
     profile: {
       id: fallback,
       name: String(row.name ?? ""),
@@ -185,6 +188,7 @@ export async function pushAll(sb: SupabaseClient, userId: string, data: AppData)
     status: item.status,
     completed_at: item.completedAt ?? null,
     completed_late: item.completedLate ?? false,
+    done_by: item.doneBy ?? null,
     skipped_at: item.skippedAt ?? null,
     rescheduled_from: item.rescheduledFrom ?? null,
     snoozed_until: item.snoozedUntil ?? null,
@@ -312,6 +316,7 @@ export async function pullAll(sb: SupabaseClient, userId: string): Promise<AppDa
     earlyOrganizer: packed.earlyOrganizer,
     plannerAccepted: packed.plannerAccepted,
     firedReminders: packed.firedReminders,
+    activity: packed.activity,
     categories: categories.map((row) => ({
       id: String(row.id),
       name: String(row.name),
@@ -369,6 +374,7 @@ export async function pullAll(sb: SupabaseClient, userId: string): Promise<AppDa
       status: row.status as Occurrence["status"],
       completedAt: (row.completed_at as string | null) ?? undefined,
       completedLate: Boolean(row.completed_late),
+      doneBy: (row.done_by as string | null) ?? undefined,
       skippedAt: (row.skipped_at as string | null) ?? undefined,
       rescheduledFrom: (row.rescheduled_from as string | null) ?? undefined,
       snoozedUntil: (row.snoozed_until as string | null) ?? undefined,
@@ -465,5 +471,6 @@ export function mergeData(local: AppData, remote: AppData | null): AppData {
     earlyOrganizer: local.earlyOrganizer || remote.earlyOrganizer,
     plannerAccepted: [...new Set([...local.plannerAccepted, ...remote.plannerAccepted])],
     firedReminders: [...new Set([...local.firedReminders, ...remote.firedReminders])].slice(-300),
+    activity: mergeActivity(local.activity, remote.activity),
   };
 }

@@ -8,7 +8,7 @@ import type { Profile } from "@/lib/types";
 import { Button, controlClass, Field } from "../ui";
 
 export function ProfileScreen() {
-  const { data, saveProfile, exportBackup, importBackup, resetAll, cloud, signIn, signUp, signOut, addCategory, removeCategory } = useApp();
+  const { data, saveProfile, exportBackup, importBackup, resetAll, cloud, signIn, signUp, signOut, addCategory, removeCategory, accountName, createAccount, enterAccount, leaveAccount } = useApp();
   const profile = data.profile;
   if (!profile) return null;
   return (
@@ -62,6 +62,12 @@ export function ProfileScreen() {
         <Field label="Streak recoveries each week">
           <input className={controlClass} type="number" min={0} max={3} value={profile.streakFreezes} onChange={(event) => saveProfile({ streakFreezes: Number(event.target.value), freezesLeft: Number(event.target.value) })} />
         </Field>
+      </section>
+      <section className="card space-y-3 p-4">
+        <h2 className="serif text-2xl">Account</h2>
+        <p className="text-sm leading-6 text-muted">Sign in on another phone and the questions stay answered.</p>
+        {accountName ? <p className="text-sm">Signed in as {accountName}</p> : <AccountForm onIn={enterAccount} onUp={createAccount} />}
+        {accountName ? <Button variant="quiet" onClick={() => void leaveAccount()}>Sign out</Button> : null}
       </section>
       <Notifications profile={profile} onChange={saveProfile} />
       <Categories dataCategories={data.categories} onAdd={addCategory} onRemove={removeCategory} />
@@ -164,6 +170,37 @@ function Categories({ dataCategories, onAdd, onRemove }: { dataCategories: { id:
       </div>
       <Button variant="quiet" onClick={() => { onAdd({ name, icon: "Circle", area }); setName(""); }}>Add category</Button>
     </section>
+  );
+}
+
+function AccountForm({ onIn, onUp }: { onIn: (name: string, password: string) => Promise<void>; onUp: (name: string, password: string) => Promise<void> }) {
+  const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
+  const [note, setNote] = useState("");
+  return (
+    <form className="space-y-2" onSubmit={async (event) => {
+      event.preventDefault();
+      try {
+        await onIn(name, password);
+      } catch (err) {
+        setNote(err instanceof Error ? err.message : "Could not sign in.");
+      }
+    }}>
+      <input className={controlClass} required placeholder="Name" value={name} onChange={(event) => setName(event.target.value)} />
+      <input className={controlClass} type="password" required minLength={6} placeholder="Password" value={password} onChange={(event) => setPassword(event.target.value)} />
+      <div className="flex gap-2">
+        <Button type="submit">Sign in</Button>
+        <Button type="button" variant="quiet" onClick={async () => {
+          try {
+            await onUp(name, password);
+            setNote("Account ready. Sign in with this name on another phone.");
+          } catch (err) {
+            setNote(err instanceof Error ? err.message : "Could not create the account.");
+          }
+        }}>Create account</Button>
+      </div>
+      {note ? <p className="text-sm text-muted">{note}</p> : null}
+    </form>
   );
 }
 
