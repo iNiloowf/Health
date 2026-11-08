@@ -7,7 +7,7 @@ import { loadState, saveState } from "./db";
 import { clockFrom, localTimeZone } from "./dates";
 import { uid } from "./model";
 import { openSteps, stampCovered } from "./questions";
-import { applyShared, householdOccurrences, householdSignature, householdTasks } from "./share";
+import { applyShared, householdOccurrences, householdSignature, householdTasks, memberSignature } from "./share";
 import { createSharedHome, joinSharedHome, leaveSharedHome, pullHome, pushSharedHome } from "./share-client";
 import {
   acceptPlan,
@@ -200,6 +200,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const remoteSig = householdSignature(remote.tasks, remote.occurrences);
       if (householdSignature(localTasks, localOccurrences) === remoteSig && remote.revision === share.revision) {
         rememberHome(remote.tasks);
+        if (memberSignature(dataRef.current.members) !== memberSignature(remote.members)) adoptHome(remote, share.memberId);
         return;
       }
       adoptHome(remote, share.memberId);
@@ -251,9 +252,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setData(next);
       if (options?.message) setToast(options.message);
       persist(next);
-      if (next.profile?.share && householdSignature(householdTasks(prev), householdOccurrences(prev, new Set(householdTasks(prev).map((task) => task.id)))) !== householdSignature(householdTasks(next), householdOccurrences(next, new Set(householdTasks(next).map((task) => task.id))))) {
-        scheduleShare();
-      }
+      const sharedTasksChanged = householdSignature(householdTasks(prev), householdOccurrences(prev, new Set(householdTasks(prev).map((task) => task.id)))) !== householdSignature(householdTasks(next), householdOccurrences(next, new Set(householdTasks(next).map((task) => task.id))));
+      const nameChanged = (prev.profile?.name ?? "").trim() !== (next.profile?.name ?? "").trim();
+      if (next.profile?.share && (sharedTasksChanged || nameChanged)) scheduleShare();
       return true;
     } catch (err) {
       setToast(err instanceof Error ? err.message : "Something went wrong.");

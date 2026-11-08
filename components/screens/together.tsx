@@ -7,6 +7,21 @@ import type { SharedHome } from "@/lib/share";
 import { useApp } from "@/lib/store";
 import { Button, PageHeader } from "../ui";
 
+function Nickname({ current, onSave }: { current: string; onSave: (name: string) => void }) {
+  const [value, setValue] = useState(current);
+  useEffect(() => setValue(current), [current]);
+  const next = value.trim();
+  return (
+    <form className="space-y-2" onSubmit={(event) => { event.preventDefault(); if (next && next !== current) onSave(next); }}>
+      <label className="block text-sm text-muted">
+        Your nickname
+        <input className="mt-1 min-h-12 w-full rounded-full border border-line bg-elev px-4 text-ink" value={value} onChange={(event) => setValue(event.target.value)} />
+      </label>
+      <Button className="w-full" type="submit" disabled={!next || next === current}>Save nickname</Button>
+    </form>
+  );
+}
+
 export function TogetherScreen() {
   const { data, openShare, joinShare, leaveShare, saveProfile } = useApp();
   const router = useRouter();
@@ -69,9 +84,10 @@ export function TogetherScreen() {
           </button>
           <div className="flex flex-wrap justify-center gap-2">
             {home.members.map((member) => (
-              <span key={member.id} className="rounded-full bg-accent-soft px-3 py-2 text-sm">{member.name}</span>
+              <span key={member.id} className="rounded-full bg-accent-soft px-3 py-2 text-sm">{member.id === share.memberId ? data.profile?.name || member.name : member.name}</span>
             ))}
           </div>
+          <Nickname current={data.profile?.name ?? ""} onSave={(next) => saveProfile({ name: next })} />
           <Button variant="quiet" className="w-full" disabled={busy} onClick={() => void run(leaveShare)}>Leave</Button>
         </div>
       ) : (

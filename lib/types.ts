@@ -226,6 +226,12 @@ export interface ShareLink {
   revision: number;
 }
 
+export interface HouseholdMember {
+  id: string;
+  name: string;
+  joinedAt: string;
+}
+
 export interface ActivityEntry {
   id: string;
   at: string;
@@ -251,6 +257,7 @@ export interface AppData {
   earlyOrganizer: boolean;
   firedReminders: string[];
   activity: ActivityEntry[];
+  members: HouseholdMember[];
 }
 
 export interface TaskInput {

@@ -40,6 +40,7 @@ export function freshData(): AppData {
     earlyOrganizer: false,
     firedReminders: [],
     activity: [],
+    members: [],
   };
 }
 
@@ -49,6 +50,7 @@ export function hydrate(data: AppData): AppData {
     ...blank,
     ...data,
     activity: data.activity ?? [],
+    members: data.members ?? [],
     categories: data.categories?.length ? data.categories : blank.categories,
     petSchedules: data.petSchedules ?? [],
     achievements: data.achievements ?? [],
@@ -876,10 +878,30 @@ export function deleteProject(data: AppData, id: string): AppData {
 
 export function updateProfile(data: AppData, patch: Partial<Profile>, clock: Clock): AppData {
   if (!data.profile) throw new Error("Finish the introduction first.");
-  const profile = { ...data.profile, ...patch, id: data.profile.id, onboarded: data.profile.onboarded, updatedAt: clock.iso };
+  const nextPatch = { ...patch };
+  const previousName = data.profile.name.trim();
+  let renamedFrom = "";
+  if (typeof nextPatch.name === "string") {
+    const name = nextPatch.name.trim();
+    if (!name || name === previousName) delete nextPatch.name;
+    else {
+      renamedFrom = previousName;
+      nextPatch.name = name;
+    }
+  }
+  const profile = { ...data.profile, ...nextPatch, id: data.profile.id, onboarded: data.profile.onboarded, updatedAt: clock.iso };
   if (toMinutes(profile.availabilityEnd) <= toMinutes(profile.availabilityStart)) throw new Error("Availability needs an end time after the start.");
   if (toMinutes(profile.workEnd) <= toMinutes(profile.workStart)) throw new Error("Work hours need an end time after the start.");
-  return { ...data, profile };
+  if (!renamedFrom) return { ...data, profile };
+  const name = profile.name.trim();
+  const memberId = data.profile.share?.memberId || data.profile.id;
+  return {
+    ...data,
+    profile,
+    members: (data.members ?? []).map((member) => (member.id === data.profile?.share?.memberId ? { ...member, name } : member)),
+    occurrences: data.occurrences.map((item) => (item.doneBy?.trim() === renamedFrom ? { ...item, doneBy: name, updatedAt: clock.iso } : item)),
+    activity: (data.activity ?? []).map((item) => (item.memberId === memberId ? { ...item, name } : item)),
+  };
 }
 
 export function importData(raw: string): AppData {

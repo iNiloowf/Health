@@ -1,11 +1,7 @@
 import { stampCovered } from "./questions";
-import type { ActivityEntry, AppData, Occurrence, OnboardingAnswers, Task } from "./types";
+import type { ActivityEntry, AppData, HouseholdMember, Occurrence, OnboardingAnswers, Task } from "./types";
 
-export interface ShareMember {
-  id: string;
-  name: string;
-  joinedAt: string;
-}
+export type ShareMember = HouseholdMember;
 
 export interface SharedHome {
   code: string;
@@ -88,6 +84,10 @@ export function householdOccurrences(data: AppData, taskIds: Set<string>): Occur
   return data.occurrences.filter((item) => taskIds.has(item.taskId));
 }
 
+export function memberSignature(members: HouseholdMember[] | undefined): string {
+  return [...(members ?? [])].map((member) => `${member.id}:${member.name}`).sort().join("|");
+}
+
 export function householdSignature(tasks: Task[], occurrences: Occurrence[]): string {
   return JSON.stringify({
     tasks: [...tasks].sort((a, b) => a.id.localeCompare(b.id)),
@@ -144,6 +144,7 @@ export function applyShared(data: AppData, remote: SharedHome, memberId: string)
     tasks,
     occurrences,
     activity: mergeActivity(data.activity, remote.activity),
+    members: remote.members ?? [],
     profile: data.profile
       ? { ...data.profile, share: { code: remote.code, memberId, revision: remote.revision } }
       : data.profile,

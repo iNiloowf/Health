@@ -21,7 +21,7 @@ export function ProfileScreen() {
         </div>
       </header>
       <section className="card space-y-3 p-4">
-        <Field label="Name"><input className={controlClass} defaultValue={profile.name} onBlur={(event) => saveProfile({ name: event.target.value })} /></Field>
+        <Field label="Nickname"><input className={controlClass} defaultValue={profile.name} onBlur={(event) => saveProfile({ name: event.target.value })} /></Field>
         <details className="rounded-3xl bg-bg px-4 py-3">
           <summary className="cursor-pointer text-sm text-muted">Hours</summary>
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 [&>*]:min-w-0">

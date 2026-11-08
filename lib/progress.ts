@@ -50,11 +50,23 @@ export function taskPoints(item: { xpAwarded: number; xpReward: number }): numbe
 
 export function pointsByPerson(data: AppData): Array<{ name: string; points: number }> {
   const totals = new Map<string, number>();
+  const shownAs = new Map<string, string>();
   const me = data.profile?.name?.trim();
-  if (me) totals.set(me, 0);
+  const myId = data.profile?.share?.memberId;
+  for (const member of data.members ?? []) {
+    const name = member.id === myId && me ? me : member.name.trim();
+    if (!name) continue;
+    totals.set(name, totals.get(name) ?? 0);
+    if (member.name.trim()) shownAs.set(member.name.trim(), name);
+  }
+  if (me) {
+    totals.set(me, totals.get(me) ?? 0);
+    shownAs.set(me, me);
+  }
   for (const item of data.occurrences) {
     if (item.status !== "completed") continue;
-    const name = item.doneBy?.trim() || me || "Me";
+    const raw = item.doneBy?.trim() || me || "Me";
+    const name = shownAs.get(raw) || raw;
     totals.set(name, (totals.get(name) ?? 0) + taskPoints(item));
   }
   return [...totals.entries()]
