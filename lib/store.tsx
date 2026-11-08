@@ -179,7 +179,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   function scheduleShare() {
     if (shareTimer.current) window.clearTimeout(shareTimer.current);
     shareTimer.current = window.setTimeout(() => {
-      void pushShareNow().catch((err: unknown) => setToast(err instanceof Error ? err.message : "Could not update the shared home."));
+      void pushShareNow().catch(() => undefined);
     }, 350);
   }
   scheduleShareRef.current = scheduleShare;

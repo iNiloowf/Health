@@ -22,16 +22,19 @@ export function ProfileScreen() {
       </header>
       <section className="card space-y-3 p-4">
         <Field label="Name"><input className={controlClass} defaultValue={profile.name} onBlur={(event) => saveProfile({ name: event.target.value })} /></Field>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 [&>*]:min-w-0">
-          <Field label="Wake"><input className={controlClass} type="time" defaultValue={profile.wake} onBlur={(event) => saveProfile({ wake: event.target.value })} /></Field>
-          <Field label="Sleep"><input className={controlClass} type="time" defaultValue={profile.sleep} onBlur={(event) => saveProfile({ sleep: event.target.value })} /></Field>
-          <Field label="Available from"><input className={controlClass} type="time" defaultValue={profile.availabilityStart} onBlur={(event) => saveProfile({ availabilityStart: event.target.value })} /></Field>
-          <Field label="Available until"><input className={controlClass} type="time" defaultValue={profile.availabilityEnd} onBlur={(event) => saveProfile({ availabilityEnd: event.target.value })} /></Field>
-          <Field label="Work from"><input className={controlClass} type="time" defaultValue={profile.workStart} onBlur={(event) => saveProfile({ workStart: event.target.value })} /></Field>
-          <Field label="Work until"><input className={controlClass} type="time" defaultValue={profile.workEnd} onBlur={(event) => saveProfile({ workEnd: event.target.value })} /></Field>
-          <Field label="Quiet from"><input className={controlClass} type="time" defaultValue={profile.quietStart} onBlur={(event) => saveProfile({ quietStart: event.target.value })} /></Field>
-          <Field label="Quiet until"><input className={controlClass} type="time" defaultValue={profile.quietEnd} onBlur={(event) => saveProfile({ quietEnd: event.target.value })} /></Field>
-        </div>
+        <details className="rounded-3xl bg-bg px-4 py-3">
+          <summary className="cursor-pointer text-sm text-muted">Hours</summary>
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 [&>*]:min-w-0">
+            <Field label="Wake"><input className={controlClass} type="time" defaultValue={profile.wake} onBlur={(event) => saveProfile({ wake: event.target.value })} /></Field>
+            <Field label="Sleep"><input className={controlClass} type="time" defaultValue={profile.sleep} onBlur={(event) => saveProfile({ sleep: event.target.value })} /></Field>
+            <Field label="Available from"><input className={controlClass} type="time" defaultValue={profile.availabilityStart} onBlur={(event) => saveProfile({ availabilityStart: event.target.value })} /></Field>
+            <Field label="Available until"><input className={controlClass} type="time" defaultValue={profile.availabilityEnd} onBlur={(event) => saveProfile({ availabilityEnd: event.target.value })} /></Field>
+            <Field label="Work from"><input className={controlClass} type="time" defaultValue={profile.workStart} onBlur={(event) => saveProfile({ workStart: event.target.value })} /></Field>
+            <Field label="Work until"><input className={controlClass} type="time" defaultValue={profile.workEnd} onBlur={(event) => saveProfile({ workEnd: event.target.value })} /></Field>
+            <Field label="Quiet from"><input className={controlClass} type="time" defaultValue={profile.quietStart} onBlur={(event) => saveProfile({ quietStart: event.target.value })} /></Field>
+            <Field label="Quiet until"><input className={controlClass} type="time" defaultValue={profile.quietEnd} onBlur={(event) => saveProfile({ quietEnd: event.target.value })} /></Field>
+          </div>
+        </details>
         <Field label="Week starts">
           <select className={controlClass} value={profile.weekStartsOn} onChange={(event) => saveProfile({ weekStartsOn: Number(event.target.value) as 0 | 1 })}>
             <option value={1}>Monday</option>
@@ -65,7 +68,6 @@ export function ProfileScreen() {
       </section>
       <section className="card space-y-3 p-4">
         <h2 className="serif text-2xl">Account</h2>
-        <p className="text-sm leading-6 text-muted">Sign in on another phone and the questions stay answered.</p>
         {accountName ? <p className="text-sm">Signed in as {accountName}</p> : <AccountForm onIn={enterAccount} onUp={createAccount} />}
         {accountName ? <Button variant="quiet" onClick={() => void leaveAccount()}>Sign out</Button> : null}
       </section>

@@ -12,13 +12,13 @@ import { Sheet } from "./ui";
 const PRIMARY = [
   { href: "/", label: "Home", icon: "House" },
   { href: "/tasks", label: "Tasks", icon: "ListTodo" },
-  { href: "/calendar", label: "Calendar", icon: "CalendarDays" },
-  { href: "/progress", label: "Progress", icon: "TrendingUp" },
+  { href: "/together", label: "Together", icon: "Heart" },
   { href: "/profile", label: "Profile", icon: "UserRound" },
 ];
 
 const MORE = [
-  { href: "/together", label: "Together", icon: "Heart" },
+  { href: "/calendar", label: "Calendar", icon: "CalendarDays" },
+  { href: "/progress", label: "Progress", icon: "TrendingUp" },
   { href: "/household", label: "Household", icon: "Sofa" },
   { href: "/habits", label: "Habits", icon: "Repeat" },
   { href: "/pets", label: "Pets", icon: "PawPrint" },
@@ -94,7 +94,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <main className="safe-bottom mx-auto w-full max-w-3xl px-4 pt-4 md:px-8 md:pt-6 md:pb-12">{children}</main>
           </div>
           <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-elev/95 backdrop-blur-xl md:hidden" aria-label="Primary" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-            <ul className="mx-auto grid max-w-lg grid-cols-5">
+            <ul className="mx-auto grid max-w-lg grid-cols-4">
               {PRIMARY.map((item) => {
                 const active = pathname === item.href;
                 return (

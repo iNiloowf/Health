@@ -30,7 +30,6 @@ export default function LoginPage() {
     <div className="flex min-h-[calc(100dvh-1.5rem)] flex-col">
       <p className="serif text-2xl text-ink">Hearth</p>
       <h1 className="serif mt-6 text-4xl leading-none">Sign in</h1>
-      <p className="mt-3 text-sm leading-6 text-muted">Your answers stay on this account, so another phone does not ask them again.</p>
       <form className="mt-6 space-y-3" onSubmit={(event) => {
         event.preventDefault();
         void run(async () => {
@@ -62,8 +61,7 @@ export default function LoginPage() {
           router.replace(result === "questions" ? "/onboarding" : "/");
         });
       }}>
-        <h2 className="serif text-2xl">Join someone</h2>
-        <p className="text-sm leading-6 text-muted">You will not be asked what they already answered. Anything they left blank is optional.</p>
+        <h2 className="serif text-2xl">Join</h2>
         <input className="min-h-12 w-full rounded-full border border-line bg-elev px-4" required placeholder="Their code" value={code} onChange={(event) => setCode(event.target.value)} />
         <Button className="w-full" type="submit" disabled={busy || code.trim().length < 4}>Join</Button>
       </form>

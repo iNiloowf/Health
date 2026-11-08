@@ -5,12 +5,10 @@ import { useEffect, useState } from "react";
 import { pullHome } from "@/lib/share-client";
 import type { SharedHome } from "@/lib/share";
 import { useApp } from "@/lib/store";
-import { ActivityLog } from "../activity";
-import { TaskDetail, TaskRow } from "../tasks";
 import { Button, PageHeader } from "../ui";
 
 export function TogetherScreen() {
-  const { data, clock, openShare, joinShare, leaveShare, saveProfile } = useApp();
+  const { data, openShare, joinShare, leaveShare, saveProfile } = useApp();
   const router = useRouter();
   const share = data.profile?.share ?? null;
   const [code, setCode] = useState("");
@@ -19,14 +17,14 @@ export function TogetherScreen() {
   const home = share ? remote : null;
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    const code = share?.code;
-    if (!code) return;
+    const shared = share?.code;
+    if (!shared) return;
     let stop = false;
     const tick = () => {
-      void pullHome(code).then((next) => {
+      void pullHome(shared).then((next) => {
         if (!stop) setRemote(next);
       }).catch(() => undefined);
     };
@@ -38,10 +36,6 @@ export function TogetherScreen() {
       window.clearInterval(timer);
     };
   }, [share?.code]);
-
-  const today = data.occurrences
-    .filter((item) => item.area === "household" && item.date === clock.today && item.status !== "skipped")
-    .sort((a, b) => a.time.localeCompare(b.time));
 
   async function run(action: () => Promise<void>) {
     setBusy(true);
@@ -59,29 +53,27 @@ export function TogetherScreen() {
     <div className="space-y-5">
       <PageHeader title="Together" />
       {share && home ? (
-        <>
+        <div className="space-y-4">
           <button
             type="button"
-            className="card w-full px-5 py-6 text-center"
-            onClick={() => void navigator.clipboard?.writeText(home.code)}
+            className="card w-full px-5 py-8 text-center"
+            onClick={() => {
+              void navigator.clipboard?.writeText(home.code).then(() => {
+                setCopied(true);
+                window.setTimeout(() => setCopied(false), 1500);
+              });
+            }}
           >
-            <p className="text-xs text-muted">Our code</p>
-            <p className="serif mt-1 break-all text-4xl tracking-wide sm:text-5xl">{home.code}</p>
+            <p className="serif break-all text-5xl tracking-wide">{home.code}</p>
+            <p className="mt-3 text-sm text-muted">{copied ? "Copied" : "Tap to copy"}</p>
           </button>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap justify-center gap-2">
             {home.members.map((member) => (
               <span key={member.id} className="rounded-full bg-accent-soft px-3 py-2 text-sm">{member.name}</span>
             ))}
           </div>
-          <div className="space-y-2">
-            {today.map((item) => <TaskRow key={item.id} occurrence={item} onOpen={() => setSelected(item.id)} />)}
-          </div>
-          <section className="space-y-2">
-            <h2 className="text-sm text-muted">Who did it</h2>
-            <ActivityLog empty="When one of you finishes a task, their name is kept here." />
-          </section>
-          <Button variant="quiet" disabled={busy} onClick={() => void run(leaveShare)}>Leave</Button>
-        </>
+          <Button variant="quiet" className="w-full" disabled={busy} onClick={() => void run(leaveShare)}>Leave</Button>
+        </div>
       ) : (
         <div className="space-y-3">
           <input className="min-h-12 w-full rounded-full border border-line bg-elev px-4" value={name} placeholder="Your name" onChange={(event) => setName(event.target.value)} />
@@ -90,7 +82,7 @@ export function TogetherScreen() {
             await openShare();
           })}>Make our code</Button>
           <div className="flex gap-2">
-            <input className="min-h-12 min-w-0 flex-1 rounded-full border border-line bg-elev px-4" value={code} placeholder="Code" onChange={(event) => setCode(event.target.value)} />
+            <input className="min-h-12 min-w-0 flex-1 rounded-full border border-line bg-elev px-4" value={code} placeholder="Their code" onChange={(event) => setCode(event.target.value)} />
             <Button className="shrink-0" disabled={busy || code.trim().length < 4} onClick={() => void run(async () => {
               const result = await joinShare(code, name);
               if (result === "questions") router.push("/onboarding");
@@ -99,7 +91,6 @@ export function TogetherScreen() {
         </div>
       )}
       {error ? <p className="text-sm text-danger">{error}</p> : null}
-      <TaskDetail occurrenceId={selected} onClose={() => setSelected(null)} />
     </div>
   );
 }

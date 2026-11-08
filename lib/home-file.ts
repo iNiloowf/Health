@@ -32,10 +32,20 @@ async function load(code: string): Promise<{ home: SharedHome; etag: string | nu
   return { home, etag: doc.etag };
 }
 
-async function save(home: SharedHome, etag: string | null): Promise<SharedHome> {
+async function save(home: SharedHome, etag: string | null): Promise<SharedHome | null> {
   const saved = await writeDoc(homeKey(home.code), home, etag);
-  if (!saved) throw new Error("This home changed while saving. Try again.");
-  return home;
+  return saved ? home : null;
+}
+
+async function commitHome(code: string, change: (home: SharedHome) => SharedHome): Promise<SharedHome> {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const loaded = await load(code);
+    if (!loaded) throw new Error("This home is no longer here.");
+    const next = change(loaded.home);
+    const saved = await save(next, attempt === 4 ? null : loaded.etag);
+    if (saved) return saved;
+  }
+  throw new Error("This home changed while saving. Try again.");
 }
 
 function stamp(
@@ -82,7 +92,7 @@ export function createHome(input: {
     const tasks = input.tasks.filter((task) => task.area === "household");
     const ids = new Set(tasks.map((task) => task.id));
     const now = new Date().toISOString();
-    return save({
+    const created = await save({
       code,
       revision: 1,
       updatedAt: now,
@@ -93,6 +103,8 @@ export function createHome(input: {
       onboarding: input.onboarding ?? null,
       activity: input.activity ?? [],
     }, null);
+    if (!created) throw new Error("Could not make a code. Try again.");
+    return created;
   });
 }
 
@@ -100,12 +112,13 @@ export function joinHome(input: { code: string; name: string; memberId: string }
   return lock(async () => {
     const loaded = await load(cleanCode(input.code));
     if (!loaded) throw new Error("No home with that code.");
-    const { home } = loaded;
-    const name = input.name.trim() || "Me";
-    const members = home.members.some((member) => member.id === input.memberId)
-      ? home.members.map((member) => (member.id === input.memberId ? { ...member, name } : member))
-      : [...home.members, { id: input.memberId, name, joinedAt: new Date().toISOString() }];
-    return save(stamp(home, home.tasks, home.occurrences, members, home.removedTaskIds, home.onboarding ?? null, home.activity ?? []), loaded.etag);
+    return commitHome(cleanCode(input.code), (home) => {
+      const name = input.name.trim() || "Me";
+      const members = home.members.some((member) => member.id === input.memberId)
+        ? home.members.map((member) => (member.id === input.memberId ? { ...member, name } : member))
+        : [...home.members, { id: input.memberId, name, joinedAt: new Date().toISOString() }];
+      return stamp(home, home.tasks, home.occurrences, members, home.removedTaskIds, home.onboarding ?? null, home.activity ?? []);
+    });
   });
 }
 
@@ -120,25 +133,24 @@ export function pushHome(input: {
   activity?: ActivityEntry[];
 }): Promise<SharedHome> {
   return lock(async () => {
-    const loaded = await load(cleanCode(input.code));
-    if (!loaded) throw new Error("This home is no longer here.");
-    const { home } = loaded;
-    if (!home.members.some((member) => member.id === input.memberId)) throw new Error("Join this home first.");
-    const removed = [...new Set([...home.removedTaskIds, ...input.droppedTaskIds.filter(Boolean)])];
-    const removedSet = new Set(removed);
-    const incomingTasks = input.tasks.filter((task) => task.area === "household" && !removedSet.has(task.id));
-    const tasks = mergeById(home.tasks.filter((task) => !removedSet.has(task.id)), incomingTasks, pickTask);
-    const ids = new Set(tasks.map((task) => task.id));
-    const incomingOccurrences = input.occurrences.filter((item) => ids.has(item.taskId));
-    const occurrences = mergeById(
-      home.occurrences.filter((item) => ids.has(item.taskId)),
-      incomingOccurrences,
-      pickOccurrence,
-    );
-    const members = home.members.map((member) => (member.id === input.memberId ? { ...member, name: input.name.trim() || member.name } : member));
-    const onboarding = mergeOnboarding(home.onboarding ?? null, input.onboarding ?? null);
-    const activity = mergeActivity(home.activity ?? [], input.activity ?? []);
-    return save(stamp(home, tasks, occurrences, members, removed, onboarding, activity), loaded.etag);
+    return commitHome(cleanCode(input.code), (home) => {
+      if (!home.members.some((member) => member.id === input.memberId)) throw new Error("Join this home first.");
+      const removed = [...new Set([...home.removedTaskIds, ...input.droppedTaskIds.filter(Boolean)])];
+      const removedSet = new Set(removed);
+      const incomingTasks = input.tasks.filter((task) => task.area === "household" && !removedSet.has(task.id));
+      const tasks = mergeById(home.tasks.filter((task) => !removedSet.has(task.id)), incomingTasks, pickTask);
+      const ids = new Set(tasks.map((task) => task.id));
+      const incomingOccurrences = input.occurrences.filter((item) => ids.has(item.taskId));
+      const occurrences = mergeById(
+        home.occurrences.filter((item) => ids.has(item.taskId)),
+        incomingOccurrences,
+        pickOccurrence,
+      );
+      const members = home.members.map((member) => (member.id === input.memberId ? { ...member, name: input.name.trim() || member.name } : member));
+      const onboarding = mergeOnboarding(home.onboarding ?? null, input.onboarding ?? null);
+      const activity = mergeActivity(home.activity ?? [], input.activity ?? []);
+      return stamp(home, tasks, occurrences, members, removed, onboarding, activity);
+    });
   });
 }
 
@@ -147,12 +159,14 @@ export function leaveHome(input: { code: string; memberId: string }): Promise<vo
     const code = cleanCode(input.code);
     const loaded = await load(code);
     if (!loaded) return;
-    const { home } = loaded;
-    const members = home.members.filter((member) => member.id !== input.memberId);
+    const members = loaded.home.members.filter((member) => member.id !== input.memberId);
     if (!members.length) {
       await removeDoc(homeKey(code));
       return;
     }
-    await save(stamp(home, home.tasks, home.occurrences, members, home.removedTaskIds, home.onboarding ?? null, home.activity ?? []), loaded.etag);
+    await commitHome(code, (home) => {
+      const nextMembers = home.members.filter((member) => member.id !== input.memberId);
+      return stamp(home, home.tasks, home.occurrences, nextMembers, home.removedTaskIds, home.onboarding ?? null, home.activity ?? []);
+    });
   });
 }

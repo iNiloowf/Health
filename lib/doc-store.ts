@@ -13,6 +13,12 @@ function blobEnabled(): boolean {
   return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
 }
 
+function bareEtag(etag: string | null): string | null {
+  if (!etag) return null;
+  const bare = etag.trim().replace(/^W\//i, "").replace(/^"(.*)"$/, "$1").trim();
+  return bare || null;
+}
+
 export async function readDoc<T>(key: string): Promise<StoredDoc<T> | null> {
   if (blobEnabled()) {
     const result = await get(key, { access: "private", useCache: false });
@@ -31,18 +37,31 @@ export async function readDoc<T>(key: string): Promise<StoredDoc<T> | null> {
 export async function writeDoc(key: string, value: unknown, etag: string | null): Promise<boolean> {
   const body = JSON.stringify(value);
   if (blobEnabled()) {
-    try {
+    const tags = [...new Set([bareEtag(etag), etag?.trim() || null].filter((tag): tag is string => Boolean(tag)))];
+    if (!tags.length) {
       await put(key, body, {
         access: "private",
         addRandomSuffix: false,
+        allowOverwrite: true,
         contentType: "application/json",
-        ...(etag ? { ifMatch: etag } : { allowOverwrite: true }),
       });
       return true;
-    } catch (error) {
-      if (error instanceof BlobPreconditionFailedError) return false;
-      throw error;
     }
+    for (const tag of tags) {
+      try {
+        await put(key, body, {
+          access: "private",
+          addRandomSuffix: false,
+          contentType: "application/json",
+          ifMatch: tag,
+        });
+        return true;
+      } catch (error) {
+        if (error instanceof BlobPreconditionFailedError) continue;
+        throw error;
+      }
+    }
+    return false;
   }
   const file = path.join(ROOT, key);
   await mkdir(path.dirname(file), { recursive: true });
