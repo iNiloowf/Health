@@ -14,16 +14,18 @@ export function TaskRow({ occurrence, onOpen }: { occurrence: Occurrence; onOpen
   const calm = useCalm();
   const done = occurrence.status === "completed";
   return (
-    <article className="card flex items-center gap-3 p-3">
+    <article dir="ltr" className="card flex flex-row items-center gap-2 py-2 pl-1 pr-3">
       <motion.button
         type="button"
         aria-label={done ? `${occurrence.titleSnapshot} completed` : `Complete ${occurrence.titleSnapshot}`}
         disabled={done || occurrence.status === "skipped"}
         onClick={() => complete(occurrence.id)}
-        className={`grid h-11 w-11 shrink-0 place-items-center rounded-full border-2 ${done ? "border-accent bg-accent text-accent-ink" : "border-accent/70 bg-bg text-accent"}`}
+        className="grid h-14 w-14 shrink-0 place-items-center"
         animate={calm ? undefined : { scale: done ? [1, 1.06, 1] : 1 }}
       >
-        <Icon name="Check" size={18} />
+        <span className={`grid h-12 w-12 place-items-center rounded-full border-[3px] ${done ? "border-accent bg-accent text-accent-ink" : "border-accent bg-bg text-accent"}`}>
+          <Icon name="Check" size={22} />
+        </span>
       </motion.button>
       <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-3 py-1 text-left">
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-accent-soft text-accent">
@@ -54,9 +56,11 @@ export function TaskDetail({ occurrenceId, onClose }: { occurrenceId: string | n
       // eslint-disable-next-line @next/next/no-img-element
       <img src={task.image} alt="" className="mb-4 h-36 w-full rounded-2xl object-cover" />
     ) : null}
-      <div className="mb-4 flex items-center gap-3">
-        <button type="button" aria-label={occurrence.status === "completed" ? "Completed" : "Complete"} disabled={occurrence.status === "completed" || occurrence.status === "skipped"} onClick={() => complete(occurrence.id)} className={`grid h-12 w-12 shrink-0 place-items-center rounded-full border-2 ${occurrence.status === "completed" ? "border-accent bg-accent text-accent-ink" : "border-accent/70 text-accent"}`}>
-          <Icon name="Check" size={20} />
+      <div dir="ltr" className="mb-4 flex flex-row items-center gap-3">
+        <button type="button" aria-label={occurrence.status === "completed" ? "Completed" : "Complete"} disabled={occurrence.status === "completed" || occurrence.status === "skipped"} onClick={() => complete(occurrence.id)} className="grid h-14 w-14 shrink-0 place-items-center">
+          <span className={`grid h-12 w-12 place-items-center rounded-full border-[3px] ${occurrence.status === "completed" ? "border-accent bg-accent text-accent-ink" : "border-accent bg-bg text-accent"}`}>
+            <Icon name="Check" size={22} />
+          </span>
         </button>
         {task?.description ? <p className="text-sm leading-6 text-muted">{task.description}</p> : null}
       </div>
@@ -68,8 +72,8 @@ export function TaskDetail({ occurrenceId, onClose }: { occurrenceId: string | n
             const checked = occurrence.subtaskDone.includes(step.id);
             return (
               <li key={step.id}>
-                <label className="flex min-h-11 items-center gap-3 text-sm">
-                  <input type="checkbox" checked={checked} onChange={() => toggleStep(occurrence.id, step.id)} />
+                <label className="flex min-h-12 items-center gap-3 text-sm">
+                  <input type="checkbox" className="h-6 w-6 shrink-0" checked={checked} onChange={() => toggleStep(occurrence.id, step.id)} />
                   {step.title}
                 </label>
               </li>
