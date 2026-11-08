@@ -50,7 +50,10 @@
 
 html, body { min-height: 100%; }
 
-html { -webkit-text-size-adjust: 100%; }
+html {
+  -webkit-text-size-adjust: 100%;
+  background: var(--bg);
+}
 
 button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 
@@ -62,12 +65,24 @@ input, select, textarea { max-width: 100%; }
 
 body {
   margin: 0;
+  position: relative;
+  z-index: 0;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-fredoka), ui-rounded, sans-serif;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
   background:
     radial-gradient(820px 420px at 0% -8%, color-mix(in oklab, var(--accent) 28%, transparent), transparent 58%),
     radial-gradient(680px 380px at 100% 0%, color-mix(in oklab, var(--warm) 32%, transparent), transparent 52%),
     var(--bg);
-  color: var(--ink);
-  font-family: var(--font-fredoka), ui-rounded, sans-serif;
+  background-repeat: no-repeat;
 }
 
 @layer base {
