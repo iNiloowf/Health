@@ -91,14 +91,14 @@ export function CalendarScreen() {
               <h2 className="mb-2 text-sm text-muted">{mode === "day" ? formatLong(day) : formatMedium(day)}</h2>
               <div className="space-y-2">
                 {(byDate.get(day) ?? []).sort((a, b) => a.time.localeCompare(b.time)).map((item) => (
-                  <div key={item.id} dir="ltr" draggable onDragStart={(event) => event.dataTransfer.setData("text/plain", item.id)} className="card flex w-full flex-row items-center gap-2 py-2 pl-1 pr-3">
+                  <div key={item.id} dir="ltr" draggable onDragStart={(event) => event.dataTransfer.setData("text/plain", item.id)} className="card flex w-full flex-row items-center gap-2 py-2 pl-3 pr-1">
+                    <button type="button" onClick={() => setSelected(item.id)} className="min-w-0 flex-1 text-left">
+                      <span className={`block break-words text-sm ${item.status === "completed" ? "text-muted line-through" : ""}`}>{item.titleSnapshot}</span>
+                    </button>
                     <button type="button" aria-label={item.status === "completed" ? `${item.titleSnapshot} completed` : `Complete ${item.titleSnapshot}`} disabled={item.status === "completed" || item.status === "skipped"} onClick={() => complete(item.id)} className="grid h-14 w-14 shrink-0 place-items-center">
                       <span className={`grid h-12 w-12 place-items-center rounded-full border-[3px] ${item.status === "completed" ? "border-accent bg-accent text-accent-ink" : "border-accent bg-bg text-accent"}`}>
                         <Icon name="Check" size={22} />
                       </span>
-                    </button>
-                    <button type="button" onClick={() => setSelected(item.id)} className="min-w-0 flex-1 text-left">
-                      <span className={`block break-words text-sm ${item.status === "completed" ? "text-muted line-through" : ""}`}>{item.titleSnapshot}</span>
                     </button>
                   </div>
                 ))}

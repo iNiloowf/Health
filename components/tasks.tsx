@@ -14,7 +14,16 @@ export function TaskRow({ occurrence, onOpen }: { occurrence: Occurrence; onOpen
   const calm = useCalm();
   const done = occurrence.status === "completed";
   return (
-    <article dir="ltr" className="card flex flex-row items-center gap-2 py-2 pl-1 pr-3">
+    <article dir="ltr" className="card flex flex-row items-center gap-2 py-2 pl-3 pr-1">
+      <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-3 py-1 text-left">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-accent-soft text-accent">
+          <Icon name={occurrence.icon} size={18} />
+        </span>
+        <span className="min-w-0">
+          <span className={`block truncate ${done ? "text-muted line-through" : ""}`}>{occurrence.titleSnapshot}</span>
+          {done ? <span className="mt-0.5 block truncate text-xs text-muted">{occurrence.doneBy || "Me"} · +{taskPoints(occurrence)}</span> : null}
+        </span>
+      </button>
       <motion.button
         type="button"
         aria-label={done ? `${occurrence.titleSnapshot} completed` : `Complete ${occurrence.titleSnapshot}`}
@@ -27,15 +36,6 @@ export function TaskRow({ occurrence, onOpen }: { occurrence: Occurrence; onOpen
           <Icon name="Check" size={22} />
         </span>
       </motion.button>
-      <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-3 py-1 text-left">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-accent-soft text-accent">
-          <Icon name={occurrence.icon} size={18} />
-        </span>
-        <span className="min-w-0">
-          <span className={`block truncate ${done ? "text-muted line-through" : ""}`}>{occurrence.titleSnapshot}</span>
-          {done ? <span className="mt-0.5 block truncate text-xs text-muted">{occurrence.doneBy || "Me"} · +{taskPoints(occurrence)}</span> : null}
-        </span>
-      </button>
     </article>
   );
 }
@@ -57,12 +57,12 @@ export function TaskDetail({ occurrenceId, onClose }: { occurrenceId: string | n
       <img src={task.image} alt="" className="mb-4 h-36 w-full rounded-2xl object-cover" />
     ) : null}
       <div dir="ltr" className="mb-4 flex flex-row items-center gap-3">
+        {task?.description ? <p className="min-w-0 flex-1 text-sm leading-6 text-muted">{task.description}</p> : <span className="flex-1" />}
         <button type="button" aria-label={occurrence.status === "completed" ? "Completed" : "Complete"} disabled={occurrence.status === "completed" || occurrence.status === "skipped"} onClick={() => complete(occurrence.id)} className="grid h-14 w-14 shrink-0 place-items-center">
           <span className={`grid h-12 w-12 place-items-center rounded-full border-[3px] ${occurrence.status === "completed" ? "border-accent bg-accent text-accent-ink" : "border-accent bg-bg text-accent"}`}>
             <Icon name="Check" size={22} />
           </span>
         </button>
-        {task?.description ? <p className="text-sm leading-6 text-muted">{task.description}</p> : null}
       </div>
       {occurrence.status === "completed" ? <p className="text-sm text-muted">{occurrence.doneBy || "Me"} · +{taskPoints(occurrence)}</p> : null}
       {task?.notes ? <p className="mt-4 text-sm leading-6">{task.notes}</p> : null}
@@ -73,8 +73,8 @@ export function TaskDetail({ occurrenceId, onClose }: { occurrenceId: string | n
             return (
               <li key={step.id}>
                 <label className="flex min-h-12 items-center gap-3 text-sm">
+                  <span className="min-w-0 flex-1">{step.title}</span>
                   <input type="checkbox" className="h-6 w-6 shrink-0" checked={checked} onChange={() => toggleStep(occurrence.id, step.id)} />
-                  {step.title}
                 </label>
               </li>
             );
