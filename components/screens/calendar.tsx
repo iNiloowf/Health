@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { addDays, eachDate, formatLong, formatMedium, formatTime, formatWeekday, monthStart, startOfWeek, weekday } from "@/lib/dates";
+import { addDays, eachDate, formatLong, formatMedium, formatWeekday, monthStart, startOfWeek, weekday } from "@/lib/dates";
 import { useApp } from "@/lib/store";
 import type { Occurrence } from "@/lib/types";
 import { Icon } from "../icon";
@@ -9,7 +9,7 @@ import { TaskDetail } from "../tasks";
 import { Segmented } from "../ui";
 
 export function CalendarScreen() {
-  const { data, clock, move } = useApp();
+  const { data, clock, move, complete } = useApp();
   const [mode, setMode] = useState("week");
   const [cursor, setCursor] = useState(clock.today);
   const [selected, setSelected] = useState<string | null>(null);
@@ -91,18 +91,14 @@ export function CalendarScreen() {
               <h2 className="mb-2 text-sm text-muted">{mode === "day" ? formatLong(day) : formatMedium(day)}</h2>
               <div className="space-y-2">
                 {(byDate.get(day) ?? []).sort((a, b) => a.time.localeCompare(b.time)).map((item) => (
-                  <button key={item.id} type="button" draggable onDragStart={(event) => event.dataTransfer.setData("text/plain", item.id)} onClick={() => setSelected(item.id)} className="card flex w-full items-center gap-3 px-3 py-3 text-left">
-                    <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-2xl ${item.status === "completed" ? "bg-accent text-accent-ink" : "bg-accent-soft text-accent"}`}>
-                      <Icon name={item.status === "completed" ? "Check" : item.icon} size={18} />
-                    </span>
-                    <span className="min-w-0">
+                  <div key={item.id} draggable onDragStart={(event) => event.dataTransfer.setData("text/plain", item.id)} className="card flex w-full items-center gap-3 px-3 py-3">
+                    <button type="button" aria-label={item.status === "completed" ? `${item.titleSnapshot} completed` : `Complete ${item.titleSnapshot}`} disabled={item.status === "completed" || item.status === "skipped"} onClick={() => complete(item.id)} className={`grid h-10 w-10 shrink-0 place-items-center rounded-full border-2 ${item.status === "completed" ? "border-accent bg-accent text-accent-ink" : "border-accent/70 text-accent"}`}>
+                      <Icon name="Check" size={16} />
+                    </button>
+                    <button type="button" onClick={() => setSelected(item.id)} className="min-w-0 flex-1 text-left">
                       <span className={`block break-words text-sm ${item.status === "completed" ? "text-muted line-through" : ""}`}>{item.titleSnapshot}</span>
-                      <span className="mt-1 flex items-center gap-2 text-xs text-muted">
-                        <i className={`h-2 w-2 rounded-full ${dot(item)}`} />
-                        {formatTime(item.time)}{item.rescheduledFrom ? " · moved" : ""}{item.status === "missed" ? " · missed" : ""}
-                      </span>
-                    </span>
-                  </button>
+                    </button>
+                  </div>
                 ))}
                 {data.occurrences.filter((item) => item.rescheduledFrom === day && item.date !== day).map((item) => (
                   <button key={`${item.id}-moved`} type="button" onClick={() => setSelected(item.id)} className="w-full px-2 text-left text-xs text-warm">{item.titleSnapshot} moved</button>

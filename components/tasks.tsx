@@ -2,8 +2,6 @@
 
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { formatMedium, formatTime } from "@/lib/dates";
-import { recurrenceLabel } from "@/lib/model";
 import { useApp } from "@/lib/store";
 import type { Occurrence, Task } from "@/lib/types";
 import { Icon } from "./icon";
@@ -21,17 +19,18 @@ export function TaskRow({ occurrence, onOpen }: { occurrence: Occurrence; onOpen
         aria-label={done ? `${occurrence.titleSnapshot} completed` : `Complete ${occurrence.titleSnapshot}`}
         disabled={done || occurrence.status === "skipped"}
         onClick={() => complete(occurrence.id)}
-        className={`grid h-12 w-12 shrink-0 place-items-center rounded-[1.15rem] ${done ? "bg-accent text-accent-ink shadow-[0_8px_18px_rgba(229,107,147,0.28)]" : occurrence.status === "skipped" ? "bg-bg text-muted" : "bg-accent-soft text-accent shadow-[0_8px_18px_rgba(229,107,147,0.16)]"}`}
-        animate={calm ? undefined : { scale: done ? [1, 1.08, 1] : 1 }}
+        className={`grid h-11 w-11 shrink-0 place-items-center rounded-full border-2 ${done ? "border-accent bg-accent text-accent-ink" : "border-accent/70 bg-bg text-accent"}`}
+        animate={calm ? undefined : { scale: done ? [1, 1.06, 1] : 1 }}
       >
-        <Icon name={done ? "Check" : occurrence.icon} size={20} />
+        <Icon name="Check" size={18} />
       </motion.button>
-      <button type="button" onClick={onOpen} className="min-w-0 flex-1 py-1 text-left">
-        <span className={`block truncate ${done ? "text-muted line-through" : ""}`}>{occurrence.titleSnapshot}</span>
-        <span className="mt-0.5 block truncate text-xs text-muted">
-          {formatTime(occurrence.time)}
-          {done && occurrence.doneBy ? ` · ${occurrence.doneBy}` : ""}
-          {occurrence.status === "missed" ? " · later" : ""}
+      <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-3 py-1 text-left">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-accent-soft text-accent">
+          <Icon name={occurrence.icon} size={18} />
+        </span>
+        <span className="min-w-0">
+          <span className={`block truncate ${done ? "text-muted line-through" : ""}`}>{occurrence.titleSnapshot}</span>
+          {done && occurrence.doneBy ? <span className="mt-0.5 block truncate text-xs text-muted">{occurrence.doneBy}</span> : null}
         </span>
       </button>
     </article>
@@ -39,12 +38,10 @@ export function TaskRow({ occurrence, onOpen }: { occurrence: Occurrence; onOpen
 }
 
 export function TaskDetail({ occurrenceId, onClose }: { occurrenceId: string | null; onClose: () => void }) {
-  const { data, complete, skip, move, toggleStep, saveNote, removeTask, setActive } = useApp();
+  const { data, complete, toggleStep, saveNote, removeTask, setActive } = useApp();
   const occurrence = data.occurrences.find((item) => item.id === occurrenceId);
   const task = data.tasks.find((item) => item.id === occurrence?.taskId);
   const [editing, setEditing] = useState(false);
-  const [date, setDate] = useState(occurrence?.date ?? "");
-  const [time, setTime] = useState(occurrence?.time ?? "19:00");
   const [confirm, setConfirm] = useState(false);
 
   if (!occurrence) return null;
@@ -52,24 +49,17 @@ export function TaskDetail({ occurrenceId, onClose }: { occurrenceId: string | n
   return (
     <>
     <Sheet open={Boolean(occurrenceId) && !editing} title={occurrence.titleSnapshot} onClose={onClose}>
-      {occurrence.note || task?.image ? null : null}
       {task?.image ? (
       // eslint-disable-next-line @next/next/no-img-element
       <img src={task.image} alt="" className="mb-4 h-36 w-full rounded-2xl object-cover" />
     ) : null}
       <div className="mb-4 flex items-center gap-3">
-        <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-[1.15rem] ${occurrence.status === "completed" ? "bg-accent text-accent-ink" : "bg-accent-soft text-accent"}`}>
-          <Icon name={occurrence.status === "completed" ? "Check" : occurrence.icon} size={20} />
-        </span>
+        <button type="button" aria-label={occurrence.status === "completed" ? "Completed" : "Complete"} disabled={occurrence.status === "completed" || occurrence.status === "skipped"} onClick={() => complete(occurrence.id)} className={`grid h-12 w-12 shrink-0 place-items-center rounded-full border-2 ${occurrence.status === "completed" ? "border-accent bg-accent text-accent-ink" : "border-accent/70 text-accent"}`}>
+          <Icon name="Check" size={20} />
+        </button>
         {task?.description ? <p className="text-sm leading-6 text-muted">{task.description}</p> : null}
       </div>
-      <dl className="mt-4 grid grid-cols-1 gap-3 text-sm min-[380px]:grid-cols-2">
-        <Info label="When" value={`${formatMedium(occurrence.date)} · ${formatTime(occurrence.time)}`} />
-        <Info label="Status" value={occurrence.status} />
-        {occurrence.doneBy ? <Info label="Done by" value={occurrence.doneBy} /> : null}
-        <Info label="Repeats" value={task ? recurrenceLabel(task.recurrence) : "One time"} />
-        <Info label="Streak" value={task ? `${task.streak}${task.atRisk ? " at risk" : ""}` : "0"} />
-      </dl>
+      {occurrence.doneBy ? <p className="text-sm text-muted">{occurrence.doneBy}</p> : null}
       {task?.notes ? <p className="mt-4 text-sm leading-6">{task.notes}</p> : null}
       {steps.length ? (
         <ul className="mt-4 space-y-2">
@@ -87,17 +77,10 @@ export function TaskDetail({ occurrenceId, onClose }: { occurrenceId: string | n
         </ul>
       ) : null}
       <label className="mt-4 block text-sm">
-        <span className="text-muted">Note for this time</span>
+        <span className="text-muted">Note</span>
         <textarea className="mt-1 min-h-20 w-full rounded-2xl border border-line bg-bg/70 px-3 py-2" defaultValue={occurrence.note ?? ""} onBlur={(event) => saveNote(occurrence.id, event.target.value)} />
       </label>
-      <div className="mt-4 grid grid-cols-1 gap-2 min-[380px]:grid-cols-2">
-        <input className="min-h-11 min-w-0 rounded-2xl border border-line bg-bg/70 px-3" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
-        <input className="min-h-11 min-w-0 rounded-2xl border border-line bg-bg/70 px-3" type="time" value={time} onChange={(event) => setTime(event.target.value)} />
-      </div>
       <div className="mt-3 flex flex-wrap gap-2">
-        {occurrence.status !== "completed" ? <Button onClick={() => complete(occurrence.id)}>Complete</Button> : null}
-        <Button variant="quiet" onClick={() => move(occurrence.id, date, time)}>Move</Button>
-        {occurrence.status !== "completed" ? <Button variant="ghost" onClick={() => skip(occurrence.id)}>{occurrence.status === "missed" ? "Protect streak" : "Skip"}</Button> : null}
         {task ? <Button variant="quiet" onClick={() => setEditing(true)}>Edit</Button> : null}
         {task ? <Button variant="ghost" onClick={() => setActive(task.id, !task.active)}>{task.active ? "Pause" : "Resume"}</Button> : null}
         {task && !confirm ? <Button variant="danger" onClick={() => setConfirm(true)}>Delete</Button> : null}
@@ -114,15 +97,6 @@ function Editor({ task, onClose }: { task: Task; onClose: () => void }) {
     <Sheet open title="Edit task" onClose={onClose}>
       <TaskForm initial={task} onClose={onClose} />
     </Sheet>
-  );
-}
-
-function Info({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl bg-bg/70 px-3 py-2">
-      <dt className="text-xs text-muted">{label}</dt>
-      <dd className="break-words capitalize">{value}</dd>
-    </div>
   );
 }
 

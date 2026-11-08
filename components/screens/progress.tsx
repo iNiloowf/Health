@@ -2,19 +2,18 @@
 
 import { formatWeekday, monthStart, startOfWeek } from "@/lib/dates";
 import { dayStreak } from "@/lib/model";
-import { buildInsights, categoryBreakdown, monthSeries, postponedTasks, rangePercent, routineSuggestions, totalXp, weekSeries } from "@/lib/progress";
+import { buildInsights, categoryBreakdown, monthSeries, postponedTasks, rangePercent, totalXp, weekSeries } from "@/lib/progress";
 import { LEVELS } from "@/lib/templates";
 import { useApp } from "@/lib/store";
-import { Button, PageHeader } from "../ui";
+import { PageHeader } from "../ui";
 
 export function ProgressScreen() {
-  const { data, clock, level, preferTime } = useApp();
+  const { data, clock, level } = useApp();
   const week = weekSeries(data, clock.today);
   const month = monthSeries(data, clock.today);
   const insights = buildInsights(data, clock.today);
   const categories = categoryBreakdown(data);
   const postponed = postponedTasks(data);
-  const routines = routineSuggestions(data);
   const maxWeek = Math.max(1, ...week.map((day) => day.done));
   const daily = rangePercent(data, clock.today, clock.today);
   const weekly = rangePercent(data, startOfWeek(clock.today, data.profile?.weekStartsOn ?? 1), clock.today);
@@ -60,12 +59,6 @@ export function ProgressScreen() {
       <section className="space-y-2">
         {insights.map((insight) => <p key={insight.id} className="card px-4 py-3 text-sm leading-6">{insight.text}</p>)}
       </section>
-      {routines.map((routine) => (
-        <div key={routine.taskId} className="card flex flex-col items-stretch gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm">You often finish {routine.title} around {routine.time}.</p>
-          <Button variant="quiet" className="shrink-0" onClick={() => preferTime(routine.taskId, routine.time)}>Use it</Button>
-        </div>
-      ))}
       {categories.length ? (
         <section>
           <h2 className="mb-2 text-sm text-muted">By category</h2>

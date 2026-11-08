@@ -19,14 +19,14 @@ export function TaskForm({ initial, onClose, lock }: { initial?: Task; onClose: 
   const [icon, setIcon] = useState(initial?.icon ?? category?.icon ?? "Check");
   const [image, setImage] = useState(initial?.image);
   const [priority, setPriority] = useState<Priority>(initial?.priority ?? "medium");
-  const [duration, setDuration] = useState(initial?.durationMinutes ?? 20);
+  const [duration] = useState(initial?.durationMinutes ?? 20);
   const [xp, setXp] = useState(initial?.xpReward ?? suggestedXp(20, "medium"));
   const [recurrence, setRecurrence] = useState<Recurrence>(initial?.recurrence ?? { type: "weekly", weekday: 4 });
-  const [anchorDate, setAnchorDate] = useState(initial?.anchorDate ?? clock.today);
-  const [preferredTime, setPreferredTime] = useState(initial?.preferredTime ?? "");
-  const [flexible, setFlexible] = useState(initial?.flexible ?? true);
+  const [anchorDate] = useState(initial?.anchorDate ?? clock.today);
+  const [preferredTime] = useState(initial?.preferredTime ?? "");
+  const [flexible] = useState(initial?.flexible ?? true);
   const [windowName, setWindow] = useState<ScheduleWindow>(initial?.window ?? lock?.window ?? (category?.area === "work" ? "day" : "evening"));
-  const [reminder, setReminder] = useState(initial?.reminderMinutes === undefined ? "15" : initial.reminderMinutes === null ? "off" : String(initial.reminderMinutes));
+  const [reminder] = useState(initial?.reminderMinutes === undefined ? "15" : initial.reminderMinutes === null ? "off" : String(initial.reminderMinutes));
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [steps, setSteps] = useState(initial?.subtasks.map((step) => step.title).join("\n") ?? "");
   const [error, setError] = useState("");
@@ -59,8 +59,6 @@ export function TaskForm({ initial, onClose, lock }: { initial?: Task; onClose: 
     if (saved) onClose();
     else setError("Check the form and try again.");
   }
-
-  const eveningWarning = windowName !== "day" && preferredTime && preferredTime < "18:00";
 
   return (
     <form
@@ -122,18 +120,6 @@ export function TaskForm({ initial, onClose, lock }: { initial?: Task; onClose: 
         // eslint-disable-next-line @next/next/no-img-element
         <img src={image} alt="" className="h-28 w-full rounded-2xl object-cover" />
       ) : null}
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Minutes">
-          <input className={controlClass} type="number" min={1} max={240} value={duration} onChange={(event) => {
-            const next = Number(event.target.value);
-            setDuration(next);
-            setXp(suggestedXp(next, priority));
-          }} />
-        </Field>
-        <Field label="XP reward">
-          <input className={controlClass} type="number" min={0} max={200} value={xp} onChange={(event) => setXp(Number(event.target.value))} />
-        </Field>
-      </div>
       <Field label="Repeats">
         <select className={controlClass} value={recurrence.type} onChange={(event) => {
           const type = event.target.value as Recurrence["type"];
@@ -179,36 +165,6 @@ export function TaskForm({ initial, onClose, lock }: { initial?: Task; onClose: 
           <input className={controlClass} type="number" min={1} max={31} value={recurrence.dayOfMonth ?? 1} onChange={(event) => setRecurrence({ type: "monthly", dayOfMonth: Number(event.target.value) })} />
         </Field>
       ) : null}
-      <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2">
-        <Field label="Starts">
-          <input className={controlClass} type="date" value={anchorDate} onChange={(event) => setAnchorDate(event.target.value)} />
-        </Field>
-        <Field label="Preferred time">
-          <input className={controlClass} type="time" value={preferredTime} onChange={(event) => setPreferredTime(event.target.value)} />
-        </Field>
-      </div>
-      <Field label="When it can happen">
-        <select className={controlClass} value={windowName} onChange={(event) => setWindow(event.target.value as ScheduleWindow)}>
-          <option value="evening">After my available hours, usually 6 PM</option>
-          <option value="day">Daytime</option>
-          <option value="anytime">Either, evenings first</option>
-        </select>
-      </Field>
-      {eveningWarning ? <p className="text-sm text-warm">Household tasks usually stay after 6 PM. This time is kept because you chose it.</p> : null}
-      <label className="flex items-center justify-between gap-3 text-sm">
-        <span>Flexible timing</span>
-        <input type="checkbox" checked={flexible} onChange={(event) => setFlexible(event.target.checked)} />
-      </label>
-      <Field label="Reminder">
-        <select className={controlClass} value={reminder} onChange={(event) => setReminder(event.target.value)}>
-          <option value="off">Off</option>
-          <option value="5">5 minutes before</option>
-          <option value="10">10 minutes before</option>
-          <option value="15">15 minutes before</option>
-          <option value="30">30 minutes before</option>
-          <option value="60">1 hour before</option>
-        </select>
-      </Field>
       <Field label="Notes">
         <textarea className={`${controlClass} min-h-20 py-2`} value={notes} onChange={(event) => setNotes(event.target.value)} />
       </Field>
