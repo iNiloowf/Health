@@ -6,6 +6,7 @@ import { formatLong, formatTime, greeting } from "@/lib/dates";
 import { dayProgress } from "@/lib/progress";
 import { suggestTonight } from "@/lib/engine";
 import { useApp } from "@/lib/store";
+import { Icon } from "../icon";
 import { TaskDetail, TaskRow } from "../tasks";
 import { Button, ProgressRing, Sheet } from "../ui";
 
@@ -66,7 +67,7 @@ export function HomeScreen() {
 }
 
 function PlanSheet({ open, plan, onClose }: { open: boolean; plan: ReturnType<typeof suggestTonight>; onClose: () => void }) {
-  const { acceptTonight } = useApp();
+  const { acceptTonight, data } = useApp();
   const [picked, setPicked] = useState<Record<string, boolean>>({});
   const active = plan.filter((item) => picked[item.occurrenceId] !== false);
   return (
@@ -75,6 +76,9 @@ function PlanSheet({ open, plan, onClose }: { open: boolean; plan: ReturnType<ty
         {plan.map((item) => (
           <li key={item.occurrenceId} className="flex items-center gap-3 rounded-2xl bg-elev px-3 py-3">
             <input type="checkbox" checked={picked[item.occurrenceId] !== false} onChange={(event) => setPicked((current) => ({ ...current, [item.occurrenceId]: event.target.checked }))} aria-label={item.title} />
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-accent-soft text-accent">
+              <Icon name={data.occurrences.find((occurrence) => occurrence.id === item.occurrenceId)?.icon || "Circle"} size={18} />
+            </span>
             <div className="min-w-0 flex-1">
               <p className="truncate">{item.title}</p>
               <p className="text-xs text-muted">{formatTime(item.time)} · {item.duration} min · {item.reason}</p>
