@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useState } from "react";
+import { taskPoints } from "@/lib/progress";
 import { useApp } from "@/lib/store";
 import type { Occurrence, Task } from "@/lib/types";
 import { Icon } from "./icon";
@@ -30,7 +31,7 @@ export function TaskRow({ occurrence, onOpen }: { occurrence: Occurrence; onOpen
         </span>
         <span className="min-w-0">
           <span className={`block truncate ${done ? "text-muted line-through" : ""}`}>{occurrence.titleSnapshot}</span>
-          {done && occurrence.doneBy ? <span className="mt-0.5 block truncate text-xs text-muted">{occurrence.doneBy}</span> : null}
+          {done ? <span className="mt-0.5 block truncate text-xs text-muted">{occurrence.doneBy || "Me"} · +{taskPoints(occurrence)}</span> : null}
         </span>
       </button>
     </article>
@@ -59,7 +60,7 @@ export function TaskDetail({ occurrenceId, onClose }: { occurrenceId: string | n
         </button>
         {task?.description ? <p className="text-sm leading-6 text-muted">{task.description}</p> : null}
       </div>
-      {occurrence.doneBy ? <p className="text-sm text-muted">{occurrence.doneBy}</p> : null}
+      {occurrence.status === "completed" ? <p className="text-sm text-muted">{occurrence.doneBy || "Me"} · +{taskPoints(occurrence)}</p> : null}
       {task?.notes ? <p className="mt-4 text-sm leading-6">{task.notes}</p> : null}
       {steps.length ? (
         <ul className="mt-4 space-y-2">

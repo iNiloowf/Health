@@ -38,7 +38,7 @@ import {
   updateProject,
   updateTask,
 } from "./engine";
-import { celebrationsFor, levelFor, totalXp, type Celebration } from "./progress";
+import { celebrationsFor, levelFor, pointsFor, type Celebration } from "./progress";
 import { getSupabase, supabaseConfigured } from "./supabase";
 import type { AppData, Category, Clock, OnboardingAnswers, Profile, Project, TaskInput } from "./types";
 
@@ -366,7 +366,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       error,
       data,
       clock: currentClock,
-      level: levelFor(totalXp(data)),
+      level: levelFor(pointsFor(data, data.profile?.name?.trim() || "")),
       celebrations,
       toast,
       canUndo,

@@ -44,6 +44,28 @@ export function totalXp(data: AppData): number {
   return data.xp.reduce((sum, txn) => sum + txn.amount, 0);
 }
 
+export function taskPoints(item: { xpAwarded: number; xpReward: number }): number {
+  return item.xpAwarded > 0 ? item.xpAwarded : item.xpReward;
+}
+
+export function pointsByPerson(data: AppData): Array<{ name: string; points: number }> {
+  const totals = new Map<string, number>();
+  const me = data.profile?.name?.trim();
+  if (me) totals.set(me, 0);
+  for (const item of data.occurrences) {
+    if (item.status !== "completed") continue;
+    const name = item.doneBy?.trim() || me || "Me";
+    totals.set(name, (totals.get(name) ?? 0) + taskPoints(item));
+  }
+  return [...totals.entries()]
+    .map(([name, points]) => ({ name, points }))
+    .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
+}
+
+export function pointsFor(data: AppData, name: string): number {
+  return pointsByPerson(data).find((item) => item.name === name)?.points ?? 0;
+}
+
 export function levelFor(xp: number): LevelInfo {
   let current = LEVELS[0];
   for (const level of LEVELS) {
@@ -158,8 +180,9 @@ export function celebrationsFor(prev: AppData, next: AppData, today: string): Ce
       effect: categoryEffect(next.categories, occurrence?.categoryId || ""),
     });
   }
-  const before = levelFor(totalXp(prev));
-  const after = levelFor(totalXp(next));
+  const name = next.profile?.name?.trim() || "";
+  const before = levelFor(pointsFor(prev, name));
+  const after = levelFor(pointsFor(next, name));
   if (after.level > before.level) {
     events.push({ id: `level-${after.level}-${today}`, type: "level", level: after.level, title: after.title });
   }

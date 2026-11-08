@@ -107,6 +107,7 @@ export function pickOccurrence(left: Occurrence, right: Occurrence): Occurrence 
   return {
     ...winner,
     doneBy: winner.doneBy || other.doneBy,
+    xpAwarded: winner.xpAwarded || other.xpAwarded,
     subtaskDone: [...new Set([...left.subtaskDone, ...right.subtaskDone])].sort(),
   };
 }

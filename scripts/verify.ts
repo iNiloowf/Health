@@ -13,7 +13,7 @@ import {
   suggestTonight,
 } from "../lib/engine";
 import { matchesRecurrence, taskStreak } from "../lib/model";
-import { levelFor } from "../lib/progress";
+import { levelFor, pointsFor } from "../lib/progress";
 import { inQuietHours } from "../lib/reminders";
 import { openSteps } from "../lib/questions";
 import { mergeOnboarding, pickOccurrence } from "../lib/share";
@@ -80,6 +80,7 @@ data = completeOccurrence(data, daily!.id, evening);
 assert(data.xp.length === xpBefore + 1, "completion awards XP once");
 assert(data.occurrences.find((item) => item.id === daily!.id)?.status === "completed", "occurrence is completed");
 assert(data.occurrences.find((item) => item.id === daily!.id)?.doneBy === "Niloofar", "completion records who did it");
+assert(pointsFor(data, "Niloofar") === 20, "points stay with the person who did the task");
 assert(data.activity.length === 1 && data.activity[0]?.name === "Niloofar" && data.activity[0]?.title === "Empty dishwasher", "completion is logged with the person and the task");
 
 const input: TaskInput = {

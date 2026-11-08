@@ -2,7 +2,7 @@
 
 import { formatWeekday, monthStart, startOfWeek } from "@/lib/dates";
 import { dayStreak } from "@/lib/model";
-import { buildInsights, categoryBreakdown, monthSeries, postponedTasks, rangePercent, totalXp, weekSeries } from "@/lib/progress";
+import { buildInsights, categoryBreakdown, monthSeries, pointsByPerson, postponedTasks, rangePercent, weekSeries } from "@/lib/progress";
 import { LEVELS } from "@/lib/templates";
 import { useApp } from "@/lib/store";
 import { PageHeader } from "../ui";
@@ -19,7 +19,8 @@ export function ProgressScreen() {
   const weekly = rangePercent(data, startOfWeek(clock.today, data.profile?.weekStartsOn ?? 1), clock.today);
   const monthly = rangePercent(data, monthStart(clock.today), clock.today);
   const rhythm = dayStreak(data.occurrences, clock.today);
-  const xp = totalXp(data);
+  const people = pointsByPerson(data);
+  const xp = people.find((person) => person.name === data.profile?.name?.trim())?.points ?? 0;
 
   return (
     <div className="space-y-6">
@@ -36,7 +37,9 @@ export function ProgressScreen() {
             <h2 className="serif text-3xl">{level.title}</h2>
             <p className="mt-1 text-sm text-muted">{rhythm.current} day rhythm</p>
           </div>
-          <p className="text-sm text-warm">{xp} XP</p>
+          <ul className="text-sm text-warm">
+            {people.map((person) => <li key={person.name}>{person.name} · {person.points}</li>)}
+          </ul>
         </div>
         <div className="mt-4 h-2 overflow-hidden rounded-full bg-line">
           <div className="h-full rounded-full bg-accent" style={{ width: `${Math.min(100, (level.into / level.span) * 100)}%` }} />
