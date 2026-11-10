@@ -21,7 +21,7 @@ export function TaskForm({ initial, onClose, lock }: { initial?: Task; onClose: 
   const [priority, setPriority] = useState<Priority>(initial?.priority ?? "medium");
   const [duration] = useState(initial?.durationMinutes ?? 20);
   const [xp, setXp] = useState(initial?.xpReward ?? suggestedXp(20, "medium"));
-  const [recurrence, setRecurrence] = useState<Recurrence>(initial?.recurrence ?? { type: "weekly", weekday: 4 });
+  const [recurrence, setRecurrence] = useState<Recurrence>(initial?.recurrence ?? { type: "daily" });
   const [anchorDate] = useState(initial?.anchorDate ?? clock.today);
   const [preferredTime] = useState(initial?.preferredTime ?? "");
   const [flexible] = useState(initial?.flexible ?? true);

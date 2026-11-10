@@ -146,15 +146,36 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const queue = useRef(Promise.resolve());
   const knownRemote = useRef<Set<string>>(new Set());
   const shareBusy = useRef(false);
+  const shareQueued = useRef(false);
   const shareTimer = useRef<number | null>(null);
+  const undoTimer = useRef<number | null>(null);
   const scheduleShareRef = useRef<() => void>(() => undefined);
+
+  function offerUndo(snapshot: AppData) {
+    undoRef.current = snapshot;
+    setCanUndo(true);
+    if (undoTimer.current) window.clearTimeout(undoTimer.current);
+    undoTimer.current = window.setTimeout(() => {
+      undoRef.current = null;
+      setCanUndo(false);
+    }, 2800);
+  }
+
+  function dropUndo() {
+    if (undoTimer.current) window.clearTimeout(undoTimer.current);
+    undoTimer.current = null;
+    undoRef.current = null;
+    setCanUndo(false);
+  }
 
   function rememberHome(tasks: { id: string }[]) {
     knownRemote.current = new Set(tasks.map((task) => task.id));
   }
 
   function adoptHome(home: Parameters<typeof applyShared>[1], memberId: string) {
-    const next = applyShared(dataRef.current, home, memberId);
+    const applied = applyShared(dataRef.current, home, memberId);
+    const now = clockFrom(new Date(), applied.profile?.timezone || localTimeZone());
+    const next = applied.profile?.onboarded ? reconcile(applied, now) : applied;
     dataRef.current = next;
     setData(next);
     persist(next);
@@ -162,17 +183,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return next;
   }
 
+  function releaseShare() {
+    shareBusy.current = false;
+    if (!shareQueued.current) return;
+    shareQueued.current = false;
+    scheduleShare();
+  }
+
   async function pushShareNow() {
     const current = dataRef.current;
     const share = current.profile?.share;
-    if (!share || shareBusy.current) return;
+    if (!share) return;
+    if (shareBusy.current) {
+      shareQueued.current = true;
+      return;
+    }
     shareBusy.current = true;
     try {
-      const dropped = [...knownRemote.current].filter((id) => !current.tasks.some((task) => task.id === id));
-      const home = await pushSharedHome(current, share.memberId, dropped);
+      const latest = dataRef.current;
+      const dropped = [...knownRemote.current].filter((id) => !latest.tasks.some((task) => task.id === id));
+      const home = await pushSharedHome(latest, share.memberId, dropped);
       adoptHome(home, share.memberId);
     } finally {
-      shareBusy.current = false;
+      releaseShare();
     }
   }
 
@@ -208,7 +241,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const mergedOccurrences = householdOccurrences(dataRef.current, new Set(mergedTasks.map((task) => task.id)));
       if (householdSignature(mergedTasks, mergedOccurrences) !== remoteSig) scheduleShare();
     } finally {
-      shareBusy.current = false;
+      releaseShare();
     }
   }
 
@@ -236,10 +269,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setClock(now);
       const drafted = recipe(prev);
       const next = drafted.profile?.onboarded ? reconcile(drafted, now) : drafted;
-      if (options?.undo !== false) {
-        undoRef.current = prev;
-        setCanUndo(true);
-      }
+      if (options?.undo !== false) offerUndo(prev);
       if (options?.celebrate !== false) {
         const events = celebrationsFor(prev, next, now.today);
         if (events.length) {
@@ -375,16 +405,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       accountName,
       pendingJoin,
       dismissCelebration: (id) => setCelebrations((current) => current.filter((item) => item.id !== id)),
-      clearToast: () => setToast(null),
+      clearToast: () => {
+        setToast(null);
+        dropUndo();
+      },
       undo: () => {
-        if (!undoRef.current) return;
-        dataRef.current = undoRef.current;
-        undoRef.current = null;
-        setCanUndo(false);
+        const snapshot = undoRef.current;
+        if (!snapshot) return;
+        dropUndo();
+        dataRef.current = snapshot;
         setCelebrations([]);
-        setData(dataRef.current);
+        setData(snapshot);
         setToast("Undone");
-        persist(dataRef.current);
+        persist(snapshot);
+        if (snapshot.profile?.share) scheduleShareRef.current();
       },
       finishOnboarding: (answers, taskKeys, petKeys, projectKeys) => {
         const keepExisting = Boolean(pendingJoinRef.current);
@@ -513,8 +547,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const next = importData(text);
         const now = clockFrom(new Date(), next.profile?.timezone || localTimeZone());
         const reconciled = next.profile?.onboarded ? reconcile(next, now) : next;
-        undoRef.current = dataRef.current;
-        setCanUndo(true);
+        offerUndo(dataRef.current);
         dataRef.current = reconciled;
         setData(reconciled);
         setToast("Backup restored");
@@ -522,8 +555,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       },
       resetAll: () => {
         const next = freshData();
-        undoRef.current = dataRef.current;
-        setCanUndo(true);
+        offerUndo(dataRef.current);
         dataRef.current = next;
         setData(next);
         setCelebrations([]);

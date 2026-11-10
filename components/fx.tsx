@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { achievementName } from "@/lib/progress";
 import { useApp } from "@/lib/store";
 import type { Effect } from "@/lib/types";
@@ -78,11 +78,13 @@ function Confetti({ onDone }: { onDone: () => void }) {
 
 export function ToastHost() {
   const { toast, canUndo, undo, clearToast } = useApp();
+  const clearRef = useRef(clearToast);
+  clearRef.current = clearToast;
   useEffect(() => {
     if (!toast) return;
-    const timer = window.setTimeout(clearToast, 2800);
+    const timer = window.setTimeout(() => clearRef.current(), 2800);
     return () => window.clearTimeout(timer);
-  }, [toast, clearToast]);
+  }, [toast]);
   return (
     <AnimatePresence>
       {toast ? (

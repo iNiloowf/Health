@@ -89,7 +89,7 @@ export function createHome(input: {
       code = `${word}${Math.floor(10 + Math.random() * 90)}`;
       if (!(await load(code))) break;
     }
-    const tasks = input.tasks.filter((task) => task.area === "household");
+    const tasks = input.tasks;
     const ids = new Set(tasks.map((task) => task.id));
     const now = new Date().toISOString();
     const created = await save({
@@ -137,7 +137,7 @@ export function pushHome(input: {
       if (!home.members.some((member) => member.id === input.memberId)) throw new Error("Join this home first.");
       const removed = [...new Set([...home.removedTaskIds, ...input.droppedTaskIds.filter(Boolean)])];
       const removedSet = new Set(removed);
-      const incomingTasks = input.tasks.filter((task) => task.area === "household" && !removedSet.has(task.id));
+      const incomingTasks = input.tasks.filter((task) => !removedSet.has(task.id));
       const tasks = mergeById(home.tasks.filter((task) => !removedSet.has(task.id)), incomingTasks, pickTask);
       const ids = new Set(tasks.map((task) => task.id));
       const incomingOccurrences = input.occurrences.filter((item) => ids.has(item.taskId));

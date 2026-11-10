@@ -77,7 +77,7 @@ const STATUS_RANK: Record<Occurrence["status"], number> = {
 };
 
 export function householdTasks(data: AppData): Task[] {
-  return data.tasks.filter((task) => task.area === "household");
+  return data.tasks;
 }
 
 export function householdOccurrences(data: AppData, taskIds: Set<string>): Occurrence[] {
@@ -124,21 +124,17 @@ export function mergeById<T extends { id: string }>(left: T[], right: T[], pick:
 
 export function applyShared(data: AppData, remote: SharedHome, memberId: string): AppData {
   const removed = new Set(remote.removedTaskIds);
-  const localHousehold = householdTasks(data).filter((task) => !removed.has(task.id));
-  const tasks = [
-    ...data.tasks.filter((task) => task.area !== "household"),
-    ...mergeById(localHousehold, remote.tasks.filter((task) => !removed.has(task.id)), pickTask),
-  ];
-  const sharedIds = new Set(tasks.filter((task) => task.area === "household").map((task) => task.id));
-  const localShared = data.occurrences.filter((item) => sharedIds.has(item.taskId) || (item.area === "household" && !removed.has(item.taskId)));
-  const occurrences = [
-    ...data.occurrences.filter((item) => item.area !== "household" && !sharedIds.has(item.taskId)),
-    ...mergeById(
-      localShared.filter((item) => sharedIds.has(item.taskId)),
-      remote.occurrences.filter((item) => sharedIds.has(item.taskId)),
-      pickOccurrence,
-    ),
-  ];
+  const tasks = mergeById(
+    data.tasks.filter((task) => !removed.has(task.id)),
+    remote.tasks.filter((task) => !removed.has(task.id)),
+    pickTask,
+  );
+  const ids = new Set(tasks.map((task) => task.id));
+  const occurrences = mergeById(
+    data.occurrences.filter((item) => ids.has(item.taskId)),
+    remote.occurrences.filter((item) => ids.has(item.taskId)),
+    pickOccurrence,
+  );
   return {
     ...data,
     tasks,
