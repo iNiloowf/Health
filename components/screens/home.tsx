@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { formatLong, greeting } from "@/lib/dates";
+import { choreRank, foldIsWaiting } from "@/lib/model";
 import { dayProgress } from "@/lib/progress";
 import { useApp } from "@/lib/store";
 import { TaskDetail, TaskRow } from "../tasks";
@@ -13,8 +14,8 @@ export function HomeScreen() {
   const [selected, setSelected] = useState<string | null>(null);
   const progress = dayProgress(data, clock.today);
   const open = data.occurrences
-    .filter((item) => item.date === clock.today && (item.status === "pending" || item.status === "missed"))
-    .sort((a, b) => a.time.localeCompare(b.time));
+    .filter((item) => item.date === clock.today && (item.status === "pending" || item.status === "missed") && !foldIsWaiting(data, item))
+    .sort((a, b) => choreRank(data, a) - choreRank(data, b) || a.time.localeCompare(b.time));
   const allDone = progress.total > 0 && open.length === 0;
 
   return (

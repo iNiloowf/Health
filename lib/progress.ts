@@ -1,5 +1,5 @@
 import { addDays, eachDate, startOfWeek, toMinutes, weekKey } from "./dates";
-import { dayStreak } from "./model";
+import { dayStreak, foldIsWaiting } from "./model";
 import { ACHIEVEMENTS, LEVELS, categoryEffect } from "./templates";
 import type { AppData, Clock, Effect, Workload } from "./types";
 
@@ -174,7 +174,7 @@ export function unlockAchievements(data: AppData, clock: Clock): AppData {
 }
 
 export function dayProgress(data: AppData, day: string) {
-  const items = data.occurrences.filter((item) => item.date === day && item.status !== "skipped");
+  const items = data.occurrences.filter((item) => item.date === day && item.status !== "skipped" && !foldIsWaiting(data, item));
   const done = items.filter((item) => item.status === "completed").length;
   return { total: items.length, done, percent: items.length ? Math.round((done / items.length) * 100) : 0 };
 }

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { addDays, zonedParts } from "@/lib/dates";
+import { choreRank, foldIsWaiting } from "@/lib/model";
 import { pointsByPerson } from "@/lib/progress";
 import { useApp } from "@/lib/store";
 import { AddTaskButton, TaskDetail, TaskRow } from "../tasks";
@@ -26,13 +27,14 @@ export function TasksScreen() {
     return data.occurrences
       .filter((item) => {
         if (needle && !item.titleSnapshot.toLowerCase().includes(needle)) return false;
+        if (foldIsWaiting(data, item)) return false;
         if (filter === "today") return item.date === clock.today && item.status !== "completed" && item.status !== "skipped";
         if (filter === "tomorrow") return item.date === tomorrow && item.status !== "completed" && item.status !== "skipped";
         if (item.status !== "completed") return false;
         if (!item.completedAt) return item.date === clock.today;
         return zonedParts(new Date(item.completedAt), zone).dateKey === clock.today;
       })
-      .sort((a, b) => a.time.localeCompare(b.time) || a.titleSnapshot.localeCompare(b.titleSnapshot));
+      .sort((a, b) => choreRank(data, a) - choreRank(data, b) || a.time.localeCompare(b.time) || a.titleSnapshot.localeCompare(b.titleSnapshot));
   }, [data, filter, query, clock.today]);
 
   return (

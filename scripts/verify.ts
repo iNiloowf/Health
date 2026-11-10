@@ -12,7 +12,7 @@ import {
   skipOccurrence,
   suggestTonight,
 } from "../lib/engine";
-import { matchesRecurrence, taskStreak } from "../lib/model";
+import { foldIsWaiting, matchesRecurrence, taskStreak } from "../lib/model";
 import { levelFor, pointsByPerson, pointsFor } from "../lib/progress";
 import { inQuietHours } from "../lib/reminders";
 import { openSteps } from "../lib/questions";
@@ -192,6 +192,19 @@ const everyChore = { ...answered, chores: Object.fromEntries(Object.keys(answere
 assert(!openSteps(everyChore).includes("chores"), "chores that already have an answer are not asked again");
 const filled = mergeOnboarding(answered, { ...answered, chores: { ...answered.chores, plants: "weekly" }, answeredSteps: [...answered.answeredSteps, "chores"] });
 assert(filled?.chores.plants === "weekly" && filled.chores.laundry === "weekly", "a partner can add a skipped chore without changing one already chosen");
+
+const foldAnswers = defaultAnswers();
+foldAnswers.name = "Niloofar";
+foldAnswers.chores = { ...foldAnswers.chores, laundry: "weekly", "fold-laundry": "weekly" };
+const foldPlan = buildPlan(foldAnswers, "2026-11-05");
+let loads = applyOnboarding(freshData(), foldAnswers, foldPlan.tasks.map((task) => task.key), [], [], evening);
+loads = reconcile(loads, evening);
+const wash = loads.occurrences.find((item) => item.date === "2026-11-05" && loads.tasks.find((task) => task.id === item.taskId)?.planKey === "chore:laundry");
+const folding = loads.occurrences.find((item) => item.date === "2026-11-05" && loads.tasks.find((task) => task.id === item.taskId)?.planKey === "chore:fold-laundry");
+assert(wash && folding, "laundry and folding are scheduled together");
+assert(foldIsWaiting(loads, folding!), "folding stays hidden until laundry is done");
+assert(foldIsWaiting(skipOccurrence(loads, wash!.id, evening), folding!), "skipping laundry keeps folding hidden");
+assert(!foldIsWaiting(completeOccurrence(loads, wash!.id, evening), folding!), "finishing laundry shows folding");
 
 if (failed) {
   console.error(`${failed} checks failed`);

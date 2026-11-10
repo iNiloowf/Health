@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { addDays, eachDate, formatLong, formatMedium, formatWeekday, monthStart, startOfWeek, weekday } from "@/lib/dates";
+import { foldIsWaiting } from "@/lib/model";
 import { useApp } from "@/lib/store";
 import type { Occurrence } from "@/lib/types";
 import { Icon } from "../icon";
@@ -23,12 +24,13 @@ export function CalendarScreen() {
   const byDate = useMemo(() => {
     const map = new Map<string, Occurrence[]>();
     for (const item of data.occurrences) {
+      if (foldIsWaiting(data, item)) continue;
       const list = map.get(item.date) ?? [];
       list.push(item);
       map.set(item.date, list);
     }
     return map;
-  }, [data.occurrences]);
+  }, [data]);
 
   function shift(direction: number) {
     moved.current = true;

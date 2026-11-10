@@ -1,4 +1,5 @@
 import { toMinutes } from "./dates";
+import { foldIsWaiting } from "./model";
 import type { AppData, Area, Clock, Profile } from "./types";
 
 export interface DueReminder {
@@ -25,7 +26,7 @@ export function dueReminders(data: AppData, clock: Clock): DueReminder[] {
   if (!data.profile?.notificationsEnabled) return [];
   const reminders: DueReminder[] = [];
   for (const item of data.occurrences) {
-    if (item.status !== "pending" || item.reminderMinutes == null || item.date !== clock.today) continue;
+    if (item.status !== "pending" || item.reminderMinutes == null || item.date !== clock.today || foldIsWaiting(data, item)) continue;
     if (item.snoozedUntil && item.snoozedUntil > clock.iso) continue;
     if (inQuietHours(clock, data.profile, item.area)) continue;
     const scheduled = toMinutes(item.time);

@@ -1,5 +1,5 @@
 import { addDays, dayOfMonth, fromMinutes, isValidDateKey, isValidTime, localTimeZone, previousWeek, toMinutes, weekday, weekKey } from "./dates";
-import { layoutWindow, makeOccurrence, matchesRecurrence, taskFromInput, taskStreak, uid } from "./model";
+import { foldIsWaiting, layoutWindow, makeOccurrence, matchesRecurrence, taskFromInput, taskStreak, uid } from "./model";
 import { unlockAchievements, workloadCap } from "./progress";
 import {
   CHORE_TEMPLATES,
@@ -712,7 +712,7 @@ export function suggestTonight(data: AppData, clock: Clock): PlanItem[] {
   const end = toMinutes(data.profile.availabilityEnd);
   const remaining = Math.max(20, end - start);
   const candidates = data.occurrences.filter((item) => {
-    if (item.window === "day") return false;
+    if (item.window === "day" || foldIsWaiting(data, item)) return false;
     if (item.status === "pending" && item.date === clock.today) return true;
     return item.status === "missed";
   });

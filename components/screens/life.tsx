@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { readImageFile } from "@/lib/images";
+import { foldIsWaiting } from "@/lib/model";
 import { useApp } from "@/lib/store";
 import { ACHIEVEMENTS, CHORE_TEMPLATES, PET_CARES, PET_TYPES, PROJECT_COLORS } from "@/lib/templates";
 import { paceToInput } from "./pace";
@@ -18,7 +19,7 @@ export function HouseholdScreen() {
       <PageHeader title="Household" action={<AddTaskButton lock={{ area: "household", window: "evening" }} />} />
       {rooms.map((room) => {
         const tasks = data.tasks.filter((task) => task.categoryId === room.id && task.active);
-        const items = data.occurrences.filter((item) => item.categoryId === room.id && item.date === clock.today && item.status !== "skipped");
+        const items = data.occurrences.filter((item) => item.categoryId === room.id && item.date === clock.today && item.status !== "skipped" && !foldIsWaiting(data, item));
         return (
           <section key={room.id} className="space-y-2">
             <h2 className="text-sm text-muted">{room.name}</h2>
