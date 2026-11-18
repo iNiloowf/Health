@@ -650,19 +650,15 @@ export function skipOccurrence(data: AppData, id: string, clock: Clock): AppData
   const current = data.occurrences.find((item) => item.id === id);
   if (!current) throw new Error("That task is no longer here.");
   if (current.status === "completed") throw new Error("Completed tasks stay in your history.");
-  if (current.status === "missed") {
-    if (!data.profile || data.profile.freezesLeft <= 0) {
-      throw new Error("No streak recovery left this week. You can still complete it or move it.");
-    }
-    return {
-      ...data,
-      profile: { ...data.profile, freezesLeft: data.profile.freezesLeft - 1, updatedAt: clock.iso },
-      occurrences: data.occurrences.map((item) => (item.id === id ? { ...item, status: "skipped", skippedAt: clock.iso, updatedAt: clock.iso } : item)),
-    };
-  }
+  const cycle = current.cycleKey;
   return {
     ...data,
-    occurrences: data.occurrences.map((item) => (item.id === id ? { ...item, status: "skipped", skippedAt: clock.iso, updatedAt: clock.iso } : item)),
+    occurrences: data.occurrences.map((item) => {
+      if (item.status === "completed" || item.status === "skipped") return item;
+      const sameCycle = item.id === id || (item.taskId === current.taskId && item.cycleKey === cycle);
+      if (!sameCycle) return item;
+      return { ...item, status: "skipped", skippedAt: clock.iso, updatedAt: clock.iso };
+    }),
   };
 }
 
