@@ -180,6 +180,32 @@ const skipped = skipOccurrence(
 );
 assert(skipped.occurrences.some((item) => item.status === "skipped"), "skip is recorded separately");
 
+const weeklyInput: TaskInput = {
+  title: "Skip week check",
+  description: "",
+  categoryId: data.categories[0]?.id || "kitchen",
+  icon: "Leaf",
+  priority: "medium",
+  durationMinutes: 15,
+  xpReward: 10,
+  recurrence: { type: "weekly", weekday: 4 },
+  anchorDate: "2026-11-05",
+  preferredTime: null,
+  flexible: true,
+  window: "evening",
+  reminderMinutes: 15,
+  notes: "",
+  subtasks: [],
+  area: "household",
+};
+let weekly = reconcile(createTask({ ...freshData(), profile: data.profile, categories: data.categories }, weeklyInput, evening), evening);
+const dueNow = weekly.occurrences.find((item) => item.titleSnapshot === "Skip week check" && item.date === "2026-11-05" && item.status === "pending");
+assert(dueNow, "a weekly task is due on its weekday");
+weekly = reconcile(skipOccurrence(weekly, dueNow!.id, evening), evening);
+const weeklyTaskId = dueNow!.taskId;
+assert(!weekly.occurrences.some((item) => item.taskId === weeklyTaskId && item.date <= "2026-11-11" && (item.status === "pending" || item.status === "missed")), "skip clears the weekly task for the rest of this week");
+assert(weekly.occurrences.some((item) => item.taskId === weeklyTaskId && item.date === "2026-11-12" && item.status === "pending"), "a skipped weekly task comes back next week");
+
 const pending = data.occurrences.find((item) => item.status === "pending" && item.date === "2026-11-05" && data.tasks.find((task) => task.id === item.taskId)?.planKey === "chore:laundry");
 assert(pending, "a pending task remains");
 const moved = reconcile(rescheduleOccurrence(data, pending!.id, "2026-11-06", "19:00", evening), evening);

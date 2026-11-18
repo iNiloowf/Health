@@ -438,7 +438,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       removeTask: (id) => commit((current) => deleteTask(current, id), { message: "Task deleted" }),
       setActive: (id, active) => commit((current) => setTaskActive(current, id, active, currentClock), { message: active ? "Task resumed" : "Task paused" }),
       complete: (id) => commit((current) => completeOccurrence(current, id, currentClock), { message: "Completed" }),
-      skip: (id) => commit((current) => skipOccurrence(current, id, currentClock), { message: "Skipped" }),
+      skip: (id) => {
+        const occurrence = dataRef.current.occurrences.find((item) => item.id === id);
+        const task = dataRef.current.tasks.find((item) => item.id === occurrence?.taskId);
+        const message = task?.recurrence.type === "weekly" || task?.recurrence.type === "biweekly" ? "Skipped this week" : "Skipped";
+        return commit((current) => skipOccurrence(current, id, currentClock), { message });
+      },
       move: (id, date, time) => commit((current) => rescheduleOccurrence(current, id, date, time, currentClock), { message: "Moved" }),
       toggleStep: (occurrenceId, subtaskId) => commit((current) => toggleSubtask(current, occurrenceId, subtaskId, currentClock), { undo: false, celebrate: false }),
       saveNote: (id, note) => commit((current) => setOccurrenceNote(current, id, note, currentClock), { undo: false, celebrate: false }),

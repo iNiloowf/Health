@@ -41,7 +41,7 @@ export function TaskRow({ occurrence, onOpen }: { occurrence: Occurrence; onOpen
 }
 
 export function TaskDetail({ occurrenceId, onClose }: { occurrenceId: string | null; onClose: () => void }) {
-  const { data, complete, toggleStep, saveNote, removeTask, setActive } = useApp();
+  const { data, complete, skip, toggleStep, saveNote, removeTask, setActive } = useApp();
   const occurrence = data.occurrences.find((item) => item.id === occurrenceId);
   const task = data.tasks.find((item) => item.id === occurrence?.taskId);
   const [editing, setEditing] = useState(false);
@@ -85,6 +85,12 @@ export function TaskDetail({ occurrenceId, onClose }: { occurrenceId: string | n
         <span className="text-muted">Note</span>
         <textarea className="mt-1 min-h-20 w-full rounded-2xl border border-line bg-bg/70 px-3 py-2" defaultValue={occurrence.note ?? ""} onBlur={(event) => saveNote(occurrence.id, event.target.value)} />
       </label>
+      {occurrence.status !== "completed" && occurrence.status !== "skipped" ? (
+        <div className="mt-4">
+          <Button variant="ghost" className="w-full" onClick={() => { skip(occurrence.id); onClose(); }}>Skip</Button>
+          {task?.recurrence.type === "weekly" || task?.recurrence.type === "biweekly" ? <p className="mt-2 text-center text-xs text-muted">Skips this week. It comes back next week.</p> : null}
+        </div>
+      ) : null}
       <div className="mt-3 flex flex-wrap gap-2">
         {task ? <Button variant="quiet" onClick={() => setEditing(true)}>Edit</Button> : null}
         {task ? <Button variant="ghost" onClick={() => setActive(task.id, !task.active)}>{task.active ? "Pause" : "Resume"}</Button> : null}
