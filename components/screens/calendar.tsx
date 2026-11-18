@@ -1,17 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { addDays, eachDate, formatLong, formatMedium, formatWeekday, monthStart, startOfWeek, weekday } from "@/lib/dates";
-import { foldIsWaiting } from "@/lib/model";
+import { addDays, dateKey, eachDate, formatLong, formatMedium, formatMonth, formatWeekday, monthStart, parseDateKey, startOfWeek, weekday } from "@/lib/dates";
+import { choreRank, foldIsWaiting } from "@/lib/model";
 import { useApp } from "@/lib/store";
-import type { Occurrence } from "@/lib/types";
+import type { AppData, Occurrence } from "@/lib/types";
 import { Icon } from "../icon";
 import { TaskDetail } from "../tasks";
 import { Segmented } from "../ui";
 
 export function CalendarScreen() {
   const { data, clock, move, complete } = useApp();
-  const [mode, setMode] = useState("week");
+  const [mode, setMode] = useState("month");
   const [cursor, setCursor] = useState(clock.today);
   const [selected, setSelected] = useState<string | null>(null);
   const moved = useRef(false);
@@ -34,7 +34,13 @@ export function CalendarScreen() {
 
   function shift(direction: number) {
     moved.current = true;
-    setCursor(addDays(cursor, mode === "month" ? direction * 30 : mode === "week" ? direction * 7 : direction));
+    if (mode === "month") {
+      const date = parseDateKey(monthStart(cursor));
+      date.setMonth(date.getMonth() + direction);
+      setCursor(dateKey(date));
+      return;
+    }
+    setCursor(addDays(cursor, mode === "week" ? direction * 7 : direction));
   }
 
   return (
@@ -49,23 +55,7 @@ export function CalendarScreen() {
       </div>
       <Segmented value={mode} options={[{ id: "day", label: "Day" }, { id: "week", label: "Week" }, { id: "month", label: "Month" }]} onChange={setMode} />
       {mode === "month" ? (
-        <div className="space-y-1">
-          <div className="grid grid-cols-7 gap-1 text-center text-[10px] uppercase tracking-wide text-muted">
-            {days.slice(0, 7).map((day) => <span key={`label-${day}`}>{formatWeekday(day, "narrow")}</span>)}
-          </div>
-          <div className="grid grid-cols-7 gap-1">
-            {days.map((day) => {
-              const items = byDate.get(day) ?? [];
-              const inMonth = day.slice(0, 7) === cursor.slice(0, 7);
-              return (
-                <button key={day} type="button" onClick={() => { moved.current = true; setCursor(day); setMode("day"); }} className={`flex min-h-14 flex-col items-center rounded-2xl px-0.5 py-1 sm:min-h-16 ${day === clock.today ? "bg-accent-soft" : "bg-elev"} ${inMonth ? "" : "opacity-40"}`}>
-                  <span className="text-xs">{Number(day.slice(8))}</span>
-                  <span className="mt-1 flex h-1.5 justify-center gap-0.5">{items.slice(0, 3).map((item) => <i key={item.id} className={`h-1.5 w-1.5 rounded-full ${dot(item)}`} />)}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        <MonthPlan data={data} days={days} cursor={cursor} today={clock.today} byDate={byDate} onOpen={setSelected} />
       ) : (
         <>
         {mode === "week" ? (
@@ -121,12 +111,32 @@ export function CalendarScreen() {
   );
 }
 
-function dot(item: Occurrence) {
-  if (item.status === "completed") return "bg-accent";
-  if (item.status === "missed") return "bg-danger";
-  if (item.rescheduledFrom) return "bg-warm";
-  if (item.status === "skipped") return "bg-muted";
-  return "bg-ink";
+function MonthPlan({ data, days, cursor, today, byDate, onOpen }: { data: AppData; days: string[]; cursor: string; today: string; byDate: Map<string, Occurrence[]>; onOpen: (id: string) => void }) {
+  const month = cursor.slice(0, 7);
+  const planned = days.filter((day) => day.slice(0, 7) === month && (byDate.get(day) ?? []).some((item) => item.status !== "skipped"));
+  return (
+    <div className="space-y-3">
+      <h2 className="serif text-2xl">{formatMonth(cursor)}</h2>
+      {planned.map((day) => {
+        const items = (byDate.get(day) ?? []).filter((item) => item.status !== "skipped").sort((a, b) => choreRank(data, a) - choreRank(data, b) || a.time.localeCompare(b.time));
+        return (
+          <section key={day} className="card px-4 py-3">
+            <h3 className="text-sm text-muted">{formatMedium(day)}{day === today ? " · Today" : ""}</h3>
+            <ul className="mt-2 space-y-1">
+              {items.map((item) => (
+                <li key={item.id}>
+                  <button type="button" onClick={() => onOpen(item.id)} className={`block min-h-9 w-full text-left text-sm ${item.status === "completed" ? "text-muted line-through" : ""}`}>
+                    {item.titleSnapshot}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        );
+      })}
+      {!planned.length ? <p className="text-sm text-muted">Nothing assigned this month.</p> : null}
+    </div>
+  );
 }
 
 function monthGrid(cursor: string, weekStartsOn: 0 | 1) {

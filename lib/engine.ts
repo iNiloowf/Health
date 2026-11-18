@@ -494,7 +494,7 @@ function dropExtraFolds(data: AppData): AppData {
 }
 
 function generateUpcoming(data: AppData, clock: Clock): AppData {
-  const horizon = addDays(clock.today, 21);
+  const horizon = addDays(clock.today, 62);
   const occurrences = [...data.occurrences];
   for (const task of data.tasks) {
     if (!task.active) continue;

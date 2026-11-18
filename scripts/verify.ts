@@ -63,7 +63,7 @@ assert(sheetDates.length === 1 && sheetDates[0] >= "2026-11-05", `an unfinished 
 
 const fridge = data.tasks.find((task) => task.planKey === "chore:fridge");
 const fridgeDates = data.occurrences.filter((item) => item.taskId === fridge?.id).map((item) => item.date);
-assert(fridge?.recurrence.dayOfMonth === 26 && fridgeDates.length === 1 && fridgeDates[0] === "2026-11-26", `fridge stays on its own monthly day, got ${fridgeDates.join(", ")}`);
+assert(fridge?.recurrence.dayOfMonth === 26 && fridgeDates.includes("2026-11-26") && fridgeDates.includes("2026-12-26") && fridgeDates.every((date) => date.endsWith("-26")), `fridge stays on its own monthly day, got ${fridgeDates.join(", ")}`);
 
 const trash = data.tasks.find((task) => task.planKey === "chore:trash");
 const trashDates = data.occurrences.filter((item) => item.taskId === trash?.id).map((item) => item.date);

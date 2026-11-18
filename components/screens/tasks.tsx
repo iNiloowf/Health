@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { addDays, zonedParts } from "@/lib/dates";
 import { choreRank, foldIsWaiting } from "@/lib/model";
@@ -39,7 +40,7 @@ export function TasksScreen() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Tasks" action={<AddTaskButton />} />
+      <PageHeader title="Tasks" action={<div className="flex items-center gap-2"><Link href="/calendar" className="inline-flex min-h-11 items-center text-sm text-accent">Month</Link><AddTaskButton /></div>} />
       <input className="min-h-11 w-full rounded-full border border-line bg-elev px-4" placeholder="Search" value={query} onChange={(event) => setQuery(event.target.value)} aria-label="Search tasks" />
       <Segmented value={filter} options={FILTERS} onChange={setFilter} />
       {scores.length ? (

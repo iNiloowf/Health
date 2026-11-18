@@ -72,6 +72,10 @@ export function eachDate(from: string, to: string): string[] {
   return dates;
 }
 
+export function formatMonth(key: string): string {
+  return parseDateKey(key).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+}
+
 export function formatLong(key: string): string {
   return parseDateKey(key).toLocaleDateString(undefined, {
     weekday: "long",
