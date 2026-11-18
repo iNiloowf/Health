@@ -350,12 +350,18 @@ export function bringChoresForward(data: AppData, clock: Clock): AppData {
   const fold = data.tasks.find((task) => task.active && isFoldTask(task));
   if (laundry && fold) {
     const due = lastDue(fold, clock.today);
-    const wash = occurrences.find((item) => item.taskId === laundry.id && (item.status === "pending" || item.status === "missed"));
-    if (due && !cycleDone(occurrences, fold.id, due)) {
-      const target = wash?.date && wash.date >= clock.today ? wash.date : clock.today;
-      const placed = placeOpen(occurrences, fold, due, target, clock);
+    const wash = occurrences.find((item) => item.taskId === laundry.id && item.date >= clock.today && (item.status === "pending" || item.status === "missed"));
+    const doneToday = occurrences.some((item) => item.taskId === laundry.id && item.date === clock.today && item.status === "completed");
+    if (due && !cycleDone(occurrences, fold.id, due) && (wash || doneToday)) {
+      const placed = placeOpen(occurrences, fold, due, wash?.date || clock.today, clock);
       occurrences = placed.occurrences;
       changed = changed || placed.changed;
+    } else {
+      const next = occurrences.filter((item) => item.taskId !== fold.id || (item.status !== "pending" && item.status !== "missed"));
+      if (next.length !== occurrences.length) {
+        occurrences = next;
+        changed = true;
+      }
     }
   }
 

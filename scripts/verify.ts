@@ -227,8 +227,11 @@ assert(foldIsWaiting(loads, folding!), "folding stays hidden until laundry is do
 assert(foldIsWaiting(skipOccurrence(loads, wash!.id, evening), folding!), "skipping laundry keeps folding hidden");
 const folded = completeOccurrence(loads, wash!.id, evening);
 assert(!foldIsWaiting(folded, folding!), "finishing laundry shows folding the same day");
-const stray = { ...folding!, id: "stray-fold", date: "2026-11-06", cycleKey: "2026-11-06" };
+const stray = { ...folding!, id: "stray-fold", date: "2026-11-06", cycleKey: "2026-11-06", rescheduledFrom: "2026-11-05" };
 assert(foldIsWaiting({ ...folded, occurrences: [...folded.occurrences, stray] }, stray), "folding stays off the list on days without laundry");
+const nextDay = reconcile(folded, makeClock("2026-11-06", 16 * 60));
+const foldTomorrow = nextDay.occurrences.filter((item) => nextDay.tasks.find((task) => task.id === item.taskId)?.planKey === "chore:fold-laundry" && item.date === "2026-11-06" && (item.status === "pending" || item.status === "missed"));
+assert(foldTomorrow.length === 0, "finishing laundry does not leave folding on the next day");
 const dailyFold = { ...loads.tasks.find((task) => task.planKey === "chore:fold-laundry")!, recurrence: { type: "daily" as const } };
 const retied = reconcile({ ...loads, tasks: loads.tasks.map((task) => (task.planKey === "chore:fold-laundry" ? dailyFold : task)) }, evening);
 const foldDays = retied.occurrences.filter((item) => retied.tasks.find((task) => task.id === item.taskId)?.planKey === "chore:fold-laundry").map((item) => item.date);

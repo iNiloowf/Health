@@ -487,9 +487,8 @@ function tieFoldToLaundry(data: AppData): AppData {
 function dropExtraFolds(data: AppData): AppData {
   const laundryDays = new Set(data.occurrences.filter((item) => item.status !== "skipped" && isLaundryOccurrence(data, item)).map((item) => item.date));
   const occurrences = data.occurrences.filter((item) => {
-    if (item.status !== "pending" || !isFoldOccurrence(data, item)) return true;
-    if (laundryDays.has(item.date)) return true;
-    return Boolean(item.rescheduledFrom && laundryDays.has(item.rescheduledFrom));
+    if ((item.status !== "pending" && item.status !== "missed") || !isFoldOccurrence(data, item)) return true;
+    return laundryDays.has(item.date);
   });
   return occurrences.length === data.occurrences.length ? data : { ...data, occurrences };
 }
