@@ -23,7 +23,12 @@ export function foldIsWaiting(data: AppData, occurrence: Occurrence): boolean {
   if (occurrence.status === "completed" || occurrence.status === "skipped") return false;
   if (!isFoldOccurrence(data, occurrence)) return false;
   const wash = data.occurrences.find((item) => item.date === occurrence.date && item.status !== "skipped" && isLaundryOccurrence(data, item));
-  return wash?.status !== "completed";
+  if (wash) return wash.status !== "completed";
+  if (!occurrence.rescheduledFrom) return true;
+  const carried = data.occurrences
+    .filter((item) => item.date <= occurrence.rescheduledFrom! && item.status !== "skipped" && isLaundryOccurrence(data, item))
+    .sort((a, b) => b.date.localeCompare(a.date));
+  return carried[0]?.status !== "completed";
 }
 
 export function choreRank(data: AppData, occurrence: Occurrence): number {

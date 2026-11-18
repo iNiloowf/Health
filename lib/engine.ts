@@ -1,4 +1,5 @@
 import { addDays, dayOfMonth, fromMinutes, isValidDateKey, isValidTime, localTimeZone, previousWeek, toMinutes, weekday, weekKey } from "./dates";
+import { bringChoresForward, choreRollsForward, ensureHomeChores } from "./chores";
 import { foldIsWaiting, isFoldOccurrence, isFoldTask, isLaundryOccurrence, isLaundryTask, layoutWindow, makeOccurrence, matchesRecurrence, taskFromInput, taskStreak, uid } from "./model";
 import { unlockAchievements, workloadCap } from "./progress";
 import {
@@ -450,11 +451,13 @@ export function applyOnboarding(
 export function reconcile(data: AppData, clock: Clock): AppData {
   if (!data.profile?.onboarded) return data;
   let next = refreshFreezes(data, clock);
+  next = ensureHomeChores(next, clock);
   next = tieFoldToLaundry(next);
   next = generateUpcoming(next, clock);
+  next = markMissed(next, clock);
+  next = bringChoresForward(next, clock);
   next = dropExtraFolds(next);
   next = assignTimes(next);
-  next = markMissed(next, clock);
   next = writeStreaks(next, clock);
   next = applyWeekBonus(next, clock);
   next = unlockAchievements(next, clock);
@@ -483,7 +486,11 @@ function tieFoldToLaundry(data: AppData): AppData {
 
 function dropExtraFolds(data: AppData): AppData {
   const laundryDays = new Set(data.occurrences.filter((item) => item.status !== "skipped" && isLaundryOccurrence(data, item)).map((item) => item.date));
-  const occurrences = data.occurrences.filter((item) => item.status !== "pending" || !isFoldOccurrence(data, item) || laundryDays.has(item.date));
+  const occurrences = data.occurrences.filter((item) => {
+    if (item.status !== "pending" || !isFoldOccurrence(data, item)) return true;
+    if (laundryDays.has(item.date)) return true;
+    return Boolean(item.rescheduledFrom && laundryDays.has(item.rescheduledFrom));
+  });
   return occurrences.length === data.occurrences.length ? data : { ...data, occurrences };
 }
 
@@ -492,7 +499,9 @@ function generateUpcoming(data: AppData, clock: Clock): AppData {
   const occurrences = [...data.occurrences];
   for (const task of data.tasks) {
     if (!task.active) continue;
+    const holdForOpen = choreRollsForward(task) && occurrences.some((item) => item.taskId === task.id && (item.status === "pending" || item.status === "missed"));
     for (let date = clock.today; date <= horizon; date = addDays(date, 1)) {
+      if (holdForOpen) continue;
       if (!matchesRecurrence(task, date)) continue;
       const exists = occurrences.some((item) => item.taskId === task.id && (item.cycleKey === date || item.date === date));
       if (exists) continue;

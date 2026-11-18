@@ -57,16 +57,37 @@ assert(laundryDates.every((date) => matchesRecurrence(laundry!, date)), "laundry
 assert(!laundryDates.includes("2026-11-10"), "weekly laundry is not generated on an off day");
 
 const sheets = data.tasks.find((task) => task.planKey === "chore:bedsheets");
-const sheetDates = data.occurrences.filter((item) => item.taskId === sheets?.id).map((item) => item.date);
-assert(sheetDates[0] === "2026-11-05" && sheetDates[1] === "2026-11-19", `bedsheets every two weeks, got ${sheetDates.join(", ")}`);
+assert(sheets?.title === "Wash blankets and bedsheets" && sheets.recurrence.type === "monthly" && sheets.recurrence.dayOfMonth === 4, "blankets and sheets are monthly");
+const sheetDates = data.occurrences.filter((item) => item.taskId === sheets?.id && (item.status === "pending" || item.status === "missed")).map((item) => item.date);
+assert(sheetDates.length === 1 && sheetDates[0] >= "2026-11-05", `an unfinished monthly chore stays on the list, got ${sheetDates.join(", ")}`);
 
 const fridge = data.tasks.find((task) => task.planKey === "chore:fridge");
 const fridgeDates = data.occurrences.filter((item) => item.taskId === fridge?.id).map((item) => item.date);
-assert(fridgeDates.length === 1 && fridgeDates[0] === "2026-11-05", "monthly fridge stays on the anchor day");
+assert(fridge?.recurrence.dayOfMonth === 26 && fridgeDates.length === 1 && fridgeDates[0] === "2026-11-26", `fridge stays on its own monthly day, got ${fridgeDates.join(", ")}`);
 
 const trash = data.tasks.find((task) => task.planKey === "chore:trash");
 const trashDates = data.occurrences.filter((item) => item.taskId === trash?.id).map((item) => item.date);
-assert(trashDates.includes("2026-11-05") && trashDates.includes("2026-11-08") && !trashDates.includes("2026-11-06"), "every 3 days keeps its phase");
+assert(trash?.recurrence.type === "daily" && trashDates.includes("2026-11-05") && trashDates.includes("2026-11-06"), "trash is emptied every day");
+
+const bowls = data.tasks.find((task) => task.planKey === "chore:pet-bowls");
+const entry = data.tasks.find((task) => task.planKey === "chore:entry");
+const nails = data.tasks.find((task) => task.planKey === "chore:cat-nails");
+const sink = data.tasks.find((task) => task.planKey === "chore:sink-faucets");
+const stove = data.tasks.find((task) => task.planKey === "chore:stove");
+assert(bowls?.recurrence.weekday === 1 && entry?.recurrence.weekday === 5, "weekly chores land on different days");
+assert(nails?.recurrence.type === "biweekly" && sink?.recurrence.dayOfMonth === 16 && stove?.recurrence.dayOfMonth === 22, "new monthly and biweekly chores keep their own days");
+assert(!data.tasks.some((task) => task.title.trim().toLowerCase() === "wash the toilet and bathroom"), "bathroom washing is not added twice");
+const rolled = reconcile(data, makeClock("2026-11-10", 16 * 60));
+const openBowls = rolled.occurrences.filter((item) => item.taskId === bowls?.id && (item.status === "pending" || item.status === "missed"));
+assert(openBowls.length === 1 && openBowls[0]!.date >= "2026-11-10", `unfinished weekly pet bowls stay on the list, got ${openBowls.map((item) => item.date).join(", ")}`);
+const piled = new Map<string, number>();
+for (const item of rolled.occurrences) {
+  if (item.date < "2026-11-10" || item.status === "completed" || item.status === "skipped") continue;
+  const task = rolled.tasks.find((entry) => entry.id === item.taskId);
+  if (!task || (task.recurrence.type !== "weekly" && task.recurrence.type !== "biweekly" && task.recurrence.type !== "monthly") || task.planKey === "chore:fold-laundry") continue;
+  piled.set(item.date, (piled.get(item.date) ?? 0) + 1);
+}
+assert([...piled.values()].every((count) => count <= 2), `catch-up chores stay spread out, got ${[...piled.entries()].map(([date, count]) => `${date}:${count}`).join(", ")}`);
 
 const before = data.occurrences.length;
 data = reconcile(data, evening);
@@ -159,7 +180,7 @@ const skipped = skipOccurrence(
 );
 assert(skipped.occurrences.some((item) => item.status === "skipped"), "skip is recorded separately");
 
-const pending = data.occurrences.find((item) => item.status === "pending" && item.date === "2026-11-05");
+const pending = data.occurrences.find((item) => item.status === "pending" && item.date === "2026-11-05" && data.tasks.find((task) => task.id === item.taskId)?.planKey === "chore:laundry");
 assert(pending, "a pending task remains");
 const moved = reconcile(rescheduleOccurrence(data, pending!.id, "2026-11-06", "19:00", evening), evening);
 const movedItem = moved.occurrences.find((item) => item.id === pending!.id);
