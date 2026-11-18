@@ -1,5 +1,5 @@
 import { addDays, dayOfMonth, fromMinutes, isValidDateKey, isValidTime, localTimeZone, previousWeek, toMinutes, weekday, weekKey } from "./dates";
-import { foldIsWaiting, layoutWindow, makeOccurrence, matchesRecurrence, taskFromInput, taskStreak, uid } from "./model";
+import { foldIsWaiting, isFoldOccurrence, isFoldTask, isLaundryOccurrence, isLaundryTask, layoutWindow, makeOccurrence, matchesRecurrence, taskFromInput, taskStreak, uid } from "./model";
 import { unlockAchievements, workloadCap } from "./progress";
 import {
   CHORE_TEMPLATES,
@@ -450,7 +450,9 @@ export function applyOnboarding(
 export function reconcile(data: AppData, clock: Clock): AppData {
   if (!data.profile?.onboarded) return data;
   let next = refreshFreezes(data, clock);
+  next = tieFoldToLaundry(next);
   next = generateUpcoming(next, clock);
+  next = dropExtraFolds(next);
   next = assignTimes(next);
   next = markMissed(next, clock);
   next = writeStreaks(next, clock);
@@ -464,6 +466,25 @@ function refreshFreezes(data: AppData, clock: Clock): AppData {
   const key = weekKey(clock.today, data.profile.weekStartsOn);
   if (data.profile.freezeWeek === key) return data;
   return { ...data, profile: { ...data.profile, freezeWeek: key, freezesLeft: data.profile.streakFreezes, updatedAt: clock.iso } };
+}
+
+function tieFoldToLaundry(data: AppData): AppData {
+  const laundry = data.tasks.find((task) => task.active && isLaundryTask(task));
+  if (!laundry) return data;
+  let changed = false;
+  const tasks = data.tasks.map((task) => {
+    if (!task.active || !isFoldTask(task)) return task;
+    if (JSON.stringify(task.recurrence) === JSON.stringify(laundry.recurrence) && task.anchorDate === laundry.anchorDate) return task;
+    changed = true;
+    return { ...task, recurrence: laundry.recurrence, anchorDate: laundry.anchorDate };
+  });
+  return changed ? { ...data, tasks } : data;
+}
+
+function dropExtraFolds(data: AppData): AppData {
+  const laundryDays = new Set(data.occurrences.filter((item) => item.status !== "skipped" && isLaundryOccurrence(data, item)).map((item) => item.date));
+  const occurrences = data.occurrences.filter((item) => item.status !== "pending" || !isFoldOccurrence(data, item) || laundryDays.has(item.date));
+  return occurrences.length === data.occurrences.length ? data : { ...data, occurrences };
 }
 
 function generateUpcoming(data: AppData, clock: Clock): AppData {

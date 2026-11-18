@@ -1,19 +1,29 @@
 import { addDays, daysBetween, dayOfMonth, fromMinutes, parseDateKey, toMinutes, weekday } from "./dates";
 import type { AppData, Clock, Occurrence, Priority, Recurrence, Task, TaskInput } from "./types";
 
+export function isLaundryTask(task: { planKey?: string; title: string } | undefined): boolean {
+  if (!task) return false;
+  return task.planKey === "chore:laundry" || task.title.trim().toLowerCase() === "laundry";
+}
+
+export function isFoldTask(task: { planKey?: string; title: string } | undefined): boolean {
+  if (!task) return false;
+  return task.planKey === "chore:fold-laundry" || task.title.trim().toLowerCase() === "fold laundry";
+}
+
+export function isLaundryOccurrence(data: AppData, occurrence: Occurrence): boolean {
+  return isLaundryTask(data.tasks.find((task) => task.id === occurrence.taskId)) || occurrence.titleSnapshot.trim().toLowerCase() === "laundry";
+}
+
+export function isFoldOccurrence(data: AppData, occurrence: Occurrence): boolean {
+  return isFoldTask(data.tasks.find((task) => task.id === occurrence.taskId)) || occurrence.titleSnapshot.trim().toLowerCase() === "fold laundry";
+}
+
 export function foldIsWaiting(data: AppData, occurrence: Occurrence): boolean {
   if (occurrence.status === "completed" || occurrence.status === "skipped") return false;
-  const task = data.tasks.find((item) => item.id === occurrence.taskId);
-  const folding = task?.planKey === "chore:fold-laundry" || occurrence.titleSnapshot.trim().toLowerCase() === "fold laundry";
-  if (!folding) return false;
-  const washes = data.occurrences
-    .filter((item) => {
-      if (item.date > occurrence.date) return false;
-      const source = data.tasks.find((task) => task.id === item.taskId);
-      return source?.planKey === "chore:laundry" || item.titleSnapshot.trim().toLowerCase() === "laundry";
-    })
-    .sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time));
-  return washes[0]?.status !== "completed";
+  if (!isFoldOccurrence(data, occurrence)) return false;
+  const wash = data.occurrences.find((item) => item.date === occurrence.date && item.status !== "skipped" && isLaundryOccurrence(data, item));
+  return wash?.status !== "completed";
 }
 
 export function choreRank(data: AppData, occurrence: Occurrence): number {

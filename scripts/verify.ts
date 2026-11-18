@@ -204,7 +204,16 @@ const folding = loads.occurrences.find((item) => item.date === "2026-11-05" && l
 assert(wash && folding, "laundry and folding are scheduled together");
 assert(foldIsWaiting(loads, folding!), "folding stays hidden until laundry is done");
 assert(foldIsWaiting(skipOccurrence(loads, wash!.id, evening), folding!), "skipping laundry keeps folding hidden");
-assert(!foldIsWaiting(completeOccurrence(loads, wash!.id, evening), folding!), "finishing laundry shows folding");
+const folded = completeOccurrence(loads, wash!.id, evening);
+assert(!foldIsWaiting(folded, folding!), "finishing laundry shows folding the same day");
+const stray = { ...folding!, id: "stray-fold", date: "2026-11-06", cycleKey: "2026-11-06" };
+assert(foldIsWaiting({ ...folded, occurrences: [...folded.occurrences, stray] }, stray), "folding stays off the list on days without laundry");
+const dailyFold = { ...loads.tasks.find((task) => task.planKey === "chore:fold-laundry")!, recurrence: { type: "daily" as const } };
+const retied = reconcile({ ...loads, tasks: loads.tasks.map((task) => (task.planKey === "chore:fold-laundry" ? dailyFold : task)) }, evening);
+const foldDays = retied.occurrences.filter((item) => retied.tasks.find((task) => task.id === item.taskId)?.planKey === "chore:fold-laundry").map((item) => item.date);
+const washDays = new Set(retied.occurrences.filter((item) => retied.tasks.find((task) => task.id === item.taskId)?.planKey === "chore:laundry").map((item) => item.date));
+assert(foldDays.length > 0 && foldDays.every((date) => washDays.has(date)), "folding is only kept on laundry days");
+assert(new Set(foldDays).size === foldDays.length, "folding happens once per laundry day");
 
 if (failed) {
   console.error(`${failed} checks failed`);
